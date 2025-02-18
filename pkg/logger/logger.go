@@ -1,33 +1,67 @@
 package logger
 
 import (
+	"fmt"
 	"github.com/sirupsen/logrus"
 	"os"
+	"path"
+	"runtime"
+	"strings"
 )
+
+// CustomFormatter 自定义格式化器
+type CustomFormatter struct {
+	TimestampFormat string
+}
+
+func (f *CustomFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+	// 获取调用文件和行号
+	_, file, line, _ := runtime.Caller(6)
+
+	// 构建日志消息
+	timestamp := entry.Time.Format(f.TimestampFormat)
+	level := strings.ToUpper(entry.Level.String())
+
+	// 将所有字段合并到一个字符串中，添加适当的分隔
+	var fieldsStr string
+	if len(entry.Data) > 0 {
+		pairs := make([]string, 0, len(entry.Data))
+		for k, v := range entry.Data {
+			pairs = append(pairs, fmt.Sprintf("%s: %v", k, v))
+		}
+		fieldsStr = " | " + strings.Join(pairs, " | ")
+	}
+
+	// 简化的日志格式
+	logMsg := fmt.Sprintf("[%s] %-5s %s:%d | %s%s\n",
+		timestamp,
+		level,
+		path.Base(file),
+		line,
+		entry.Message,
+		fieldsStr,
+	)
+
+	return []byte(logMsg), nil
+}
 
 var Log = logrus.New()
 
 func Init() {
-	// 使用文本格式化器
-	Log.SetFormatter(&logrus.TextFormatter{
-		// 时间格式
+	// 使用自定义格式化器
+	Log.SetFormatter(&CustomFormatter{
 		TimestampFormat: "2006-01-02 15:04:05",
-		// 完整时间戳
-		FullTimestamp: true,
-		// 禁用颜色
-		DisableColors: false,
-		// 强制显示完整时间戳
-		ForceColors: true,
 	})
-
-	// 禁用调用者信息
-	Log.ReportCaller = false
 
 	// 设置输出到标准输出
 	Log.SetOutput(os.Stdout)
 
 	// 设置日志级别
-	Log.SetLevel(logrus.InfoLevel)
+	if os.Getenv("DEBUG") == "true" {
+		Log.SetLevel(logrus.DebugLevel)
+	} else {
+		Log.SetLevel(logrus.InfoLevel)
+	}
 }
 
 // WithFields 添加自定义字段的辅助函数

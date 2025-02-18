@@ -8,6 +8,9 @@ import (
 )
 
 func main() {
+	// 设置 Gin 为发布模式
+	gin.SetMode(gin.ReleaseMode)
+
 	// 初始化日志
 	logger.Init()
 
@@ -25,9 +28,15 @@ func main() {
 	r.GET("/v1/models", api.GetModels)
 	r.POST("/v1/chat/completions", api.CreateChatCompletion)
 
-	logger.Log.Info("Trae2API Start at :17080")
+	logger.Log.WithFields(map[string]interface{}{
+		"port": 17080,
+		"mode": gin.Mode(),
+	}).Info("API 服务启动")
+
 	// 启动服务器
 	if err := r.Run(":17080"); err != nil {
-		logger.Log.Fatalf("Trae2API Start Failed: %v", err)
+		logger.Log.Fatal("服务启动失败",
+			"error", err,
+		)
 	}
 }

@@ -25,11 +25,10 @@ func InitConfig() error {
 		AuthToken:  getEnv("AUTH_TOKEN", ""),
 	}
 
-	logger.Log.Info("配置加载完成",
-		"base_url", AppConfig.BaseURL,
-		"ide_version", AppConfig.IDEVersion,
-		"auth_enabled", AppConfig.AuthToken != "",
-	)
+	logger.Log.WithFields(map[string]interface{}{
+		"AppID":     AppConfig.AppID,
+		"AuthToken": AppConfig.AuthToken,
+	}).Info("配置加载完成")
 
 	return nil
 }
