@@ -31,7 +31,7 @@ func main() {
 	logger.Log.WithFields(map[string]interface{}{
 		"port": 17080,
 		"mode": gin.Mode(),
-	}).Info("API 服务启动")
+	}).Info("API 服务启动成功")
 
 	// 启动服务器
 	if err := r.Run(":17080"); err != nil {

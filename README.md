@@ -22,7 +22,9 @@ cp .env.example .env
 ```env
 # 必需的配置项
 APP_ID=your_app_id_here                # Trae API 应用 ID
-IDE_TOKEN=your_ide_token_here          # Trae API IDE Token
+CLIENT_ID=your_client_id_here          # OAuth Client ID
+REFRESH_TOKEN=your_refresh_token_here  # OAuth Refresh Token
+USER_ID=your_user_id_here              # User ID
 AUTH_TOKEN=your_auth_token_here        # API 访问鉴权 Token
 ```
 
@@ -98,7 +100,9 @@ Content-Type: application/json
 
 ### 必需配置
 - `APP_ID`: Trae API 应用 ID
-- `IDE_TOKEN`: Trae API IDE Token
+- `CLIENT_ID`: OAuth Client ID
+- `REFRESH_TOKEN`: OAuth Refresh Token (有效期90天)
+- `USER_ID`: User ID
 - `AUTH_TOKEN`: API 访问鉴权 Token
 
 ### 可选配置

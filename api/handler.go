@@ -86,6 +86,18 @@ type TraeModelResponse struct {
 }
 
 func GetModels(c *gin.Context) {
+	// 检查 RefreshToken 是否过期
+	if config.IsRefreshTokenExpired() {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": map[string]interface{}{
+				"message": "RefreshToken 已过期，请更新环境变量中的 REFRESH_TOKEN",
+				"type":    "token_expired",
+				"code":    http.StatusUnauthorized,
+			},
+		})
+		return
+	}
+
 	client := &http.Client{}
 	url := fmt.Sprintf("%s/api/ide/v1/model_list?type=chat", config.AppConfig.BaseURL)
 
@@ -100,7 +112,7 @@ func GetModels(c *gin.Context) {
 	req.Header.Set("x-app-id", config.AppConfig.AppID)
 	req.Header.Set("x-ide-version", config.AppConfig.IDEVersion)
 	req.Header.Set("x-ide-version-type", "stable")
-	req.Header.Set("x-ide-token", config.AppConfig.IDEToken)
+	req.Header.Set("x-ide-token", config.GetCurrentToken())
 	req.Header.Set("accept", "*/*")
 
 	resp, err := client.Do(req)
@@ -201,6 +213,18 @@ func generateSessionIDFromMessages(messages []ChatMessage) string {
 }
 
 func CreateChatCompletion(c *gin.Context) {
+	// 检查 RefreshToken 是否过期
+	if config.IsRefreshTokenExpired() {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": map[string]interface{}{
+				"message": "RefreshToken 已过期，请更新环境变量中的 REFRESH_TOKEN",
+				"type":    "token_expired",
+				"code":    http.StatusUnauthorized,
+			},
+		})
+		return
+	}
+
 	var openAIReq ChatRequest
 	if err := c.BindJSON(&openAIReq); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -344,7 +368,7 @@ func CreateChatCompletion(c *gin.Context) {
 	req.Header.Set("x-app-id", config.AppConfig.AppID)
 	req.Header.Set("x-ide-version", config.AppConfig.IDEVersion)
 	req.Header.Set("x-ide-version-type", "stable")
-	req.Header.Set("x-ide-token", config.AppConfig.IDEToken)
+	req.Header.Set("x-ide-token", config.GetCurrentToken())
 	req.Header.Set("x-session-id", sessionID)
 	req.Header.Set("accept", "*/*")
 	req.Header.Set("Host", "a0ai-api-sg.byteintlapi.com")

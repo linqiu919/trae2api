@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"os"
-	"path"
-	"runtime"
 	"strings"
+	"time"
 )
 
 // CustomFormatter 自定义格式化器
@@ -15,11 +14,10 @@ type CustomFormatter struct {
 }
 
 func (f *CustomFormatter) Format(entry *logrus.Entry) ([]byte, error) {
-	// 获取调用文件和行号
-	_, file, line, _ := runtime.Caller(6)
-
+	// 将时间调整为东八区
+	localTime := entry.Time.In(time.FixedZone("CST", 8*3600))
 	// 构建日志消息
-	timestamp := entry.Time.Format(f.TimestampFormat)
+	timestamp := localTime.Format(f.TimestampFormat)
 	level := strings.ToUpper(entry.Level.String())
 
 	// 将所有字段合并到一个字符串中，添加适当的分隔
@@ -32,12 +30,10 @@ func (f *CustomFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		fieldsStr = " | " + strings.Join(pairs, " | ")
 	}
 
-	// 简化的日志格式
-	logMsg := fmt.Sprintf("[%s] %-5s %s:%d | %s%s\n",
+	// 简化的日志格式，移除文件名和行号
+	logMsg := fmt.Sprintf("[%s] %-5s %s%s\n",
 		timestamp,
 		level,
-		path.Base(file),
-		line,
 		entry.Message,
 		fieldsStr,
 	)
