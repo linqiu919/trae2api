@@ -1,6 +1,8 @@
 # Trae2API
 
-这是一个将 Trae API 转换为 OpenAI API 格式的封装服务。
+Trae：Trae是字节跳动开发的一个类似Cursor的编码辅助工具，目前处于免费试用期，提供了gpt-4o和claude3.5模型的免费使用。
+
+Trae2API：这是一个将 Trae API 转换为 OpenAI API 格式的封装服务。
 
 ## 功能特点
 
@@ -70,6 +72,22 @@ docker inspect trae2api
 
 ## API 使用说明
 
+
+### 环境变量如何获取
+
+下载Trae客户端，登录账号，向AI发起一次对话
+
+
+* Mac:
+执行以下脚本可以一键获取需要的环境变量值
+```bash
+curl -fsSL https://gist.githubusercontent.com/IM594/b0bbcdc3eb6a5e849f5e306246781a48/raw/get_trae_tokens.sh | bash
+```
+* Windows:
+安装`everything`工具
+搜索`storge.json`文件获取RefreshToken；
+搜索`main.log`文件获取Trae ClientID、Trae UserID
+
 服务启动后，可以通过以下接口访问：
 
 ### 获取模型列表
@@ -100,9 +118,9 @@ Content-Type: application/json
 
 ### 必需配置
 - `APP_ID`: Trae API 应用 ID
-- `CLIENT_ID`: OAuth Client ID
-- `REFRESH_TOKEN`: OAuth Refresh Token (有效期90天)
-- `USER_ID`: User ID
+- `CLIENT_ID`: Trae ClientID
+- `REFRESH_TOKEN`: Trae RefreshToken
+- `USER_ID`: Trae UserID
 - `AUTH_TOKEN`: API 访问鉴权 Token
 
 ### 可选配置
