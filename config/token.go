@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/trae2api/pkg/logger"
 	"io"
 	"net/http"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/trae2api/pkg/logger"
 )
 
 type TokenConfig struct {
@@ -36,7 +37,7 @@ var (
 	refreshToken    string
 )
 
-func RefreshIDEToken() error {
+func RefreshIDEToken(baseURL string) error {
 	tokenMutex.Lock()
 	defer tokenMutex.Unlock()
 
@@ -79,7 +80,7 @@ func RefreshIDEToken() error {
 	logger.Log.Info("开始执行RefreshToken获取......")
 
 	resp, err := http.Post(
-		"https://api-sg-central.trae.ai/cloudide/api/v3/trae/oauth/ExchangeToken",
+		baseURL+"/cloudide/api/v3/trae/oauth/ExchangeToken",
 		"application/json",
 		bytes.NewBuffer(jsonData),
 	)

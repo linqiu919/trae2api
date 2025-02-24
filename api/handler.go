@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"bufio"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"github.com/trae2api/config"
@@ -385,8 +386,8 @@ func CreateChatCompletion(c *gin.Context) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		errMsg := fmt.Sprintf("请求失败: %v", err)
-		logger.Log.Errorf(errMsg)
+		errMsg := fmt.Sprintf("请求远端失败: %v", err)
+		logger.Log.Errorf("%s", errMsg)
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"error": map[string]interface{}{
 				"message": errMsg,
