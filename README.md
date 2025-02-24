@@ -84,9 +84,10 @@ docker inspect trae2api
 curl -fsSL https://gist.githubusercontent.com/IM594/b0bbcdc3eb6a5e849f5e306246781a48/raw/get_trae_tokens.sh | bash
 ```
 * Windows:
-安装`everything`工具
-搜索`storge.json`文件获取RefreshToken；
-搜索`main.log`文件获取Trae ClientID、Trae UserID
+  * 安装`everything`工具
+  * 搜索`storge.json`文件获取RefreshToken
+  * 搜索`main.log`文件获取ClientID、UserID
+  * 搜索`ai_1_stdout.log`文件获取AppID
 
 服务启动后，可以通过以下接口访问：
 
@@ -117,7 +118,7 @@ Content-Type: application/json
 ## 环境变量说明
 
 ### 必需配置
-- `APP_ID`: Trae API 应用 ID
+- `APP_ID`: Trae AppID
 - `CLIENT_ID`: Trae ClientID
 - `REFRESH_TOKEN`: Trae RefreshToken
 - `USER_ID`: Trae UserID
