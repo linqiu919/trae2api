@@ -33,6 +33,7 @@ var (
 	currentToken    string
 	tokenExpireAt   int64
 	refreshExpireAt int64
+	refreshToken    string
 )
 
 func RefreshIDEToken() error {
@@ -56,10 +57,16 @@ func RefreshIDEToken() error {
 		return nil
 	}
 
+	// 使用内存中的refreshToken（如果存在），否则使用环境变量中的refreshToken
+	currentRefreshToken := refreshToken
+	if currentRefreshToken == "" {
+		currentRefreshToken = os.Getenv("REFRESH_TOKEN")
+	}
+
 	// 请求新的 Refresh Token
 	refreshConfig := TokenConfig{
 		ClientID:     os.Getenv("CLIENT_ID"),
-		RefreshToken: os.Getenv("REFRESH_TOKEN"),
+		RefreshToken: currentRefreshToken,
 		ClientSecret: "-",
 		UserID:       os.Getenv("USER_ID"),
 	}
@@ -96,10 +103,13 @@ func RefreshIDEToken() error {
 		return fmt.Errorf("decode refresh response failed: %v", err)
 	}
 
+	// 保存新的refreshToken到内存中
+	refreshToken = refreshResp.Result.RefreshToken
+
 	// 使用新的 RefreshToken 刷新 Token
 	tokenConfig := TokenConfig{
 		ClientID:     os.Getenv("CLIENT_ID"),
-		RefreshToken: refreshResp.Result.RefreshToken,
+		RefreshToken: refreshToken,
 		ClientSecret: "-",
 		UserID:       os.Getenv("USER_ID"),
 	}

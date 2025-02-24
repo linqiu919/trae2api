@@ -5,17 +5,7 @@ import (
 	"github.com/trae2api/api"
 	"github.com/trae2api/config"
 	"github.com/trae2api/pkg/logger"
-	"time"
 )
-
-func init() {
-	// 设置时区
-	loc, err := time.LoadLocation("Asia/Shanghai")
-	if err != nil {
-		panic(err)
-	}
-	time.Local = loc
-}
 
 func main() {
 	// 设置 Gin 为发布模式
