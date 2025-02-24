@@ -27,7 +27,7 @@ func InitConfig() error {
 		RefreshToken: getEnv("REFRESH_TOKEN", ""),
 		UserID:       getEnv("USER_ID", ""),
 		BaseURL:      getEnv("BASE_URL", "https://a0ai-api-sg.byteintlapi.com"),
-		IDEVersion:   getEnv("IDE_VERSION", "1.0.2"),
+		IDEVersion:   getEnv("IDE_VERSION", "1.0.4"),
 		AuthToken:    getEnv("AUTH_TOKEN", ""),
 	}
 
@@ -40,7 +40,6 @@ func InitConfig() error {
 	go func() {
 		ticker := time.NewTicker(5 * time.Minute)
 		for range ticker.C {
-			logger.Log.Info("开始执行Token刷新......")
 			if err := RefreshIDEToken(); err != nil {
 				logger.Log.Errorf("自动刷新 Token 失败: %v", err)
 			}

@@ -56,21 +56,20 @@ func RefreshIDEToken() error {
 		return nil
 	}
 
-	tokenConfig := TokenConfig{
+	// 请求新的 Refresh Token
+	refreshConfig := TokenConfig{
 		ClientID:     os.Getenv("CLIENT_ID"),
 		RefreshToken: os.Getenv("REFRESH_TOKEN"),
 		ClientSecret: "-",
 		UserID:       os.Getenv("USER_ID"),
 	}
 
-	jsonData, err := json.Marshal(tokenConfig)
+	jsonData, err := json.Marshal(refreshConfig)
 	if err != nil {
-		return fmt.Errorf("marshal token config failed: %v", err)
+		return fmt.Errorf("marshal refresh config failed: %v", err)
 	}
 
-	// 打印请求参数
-	logger.Log.Info("开始执行Token获取......")
-	//logger.Log.Info(fmt.Sprintf("请求参数:\n%s", string(jsonData)))
+	logger.Log.Info("开始执行RefreshToken获取......")
 
 	resp, err := http.Post(
 		"https://api-sg-central.trae.ai/cloudide/api/v3/trae/oauth/ExchangeToken",
@@ -82,19 +81,56 @@ func RefreshIDEToken() error {
 	}
 	defer resp.Body.Close()
 
-	// 读取响应体
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("read response body failed: %v", err)
 	}
 
-	// 只在响应码不是 200 时打印响应内容
 	if resp.StatusCode != http.StatusOK {
 		logger.Log.Error(fmt.Sprintf("请求失败\n状态码: %d\n响应内容:\n%s", resp.StatusCode, string(respBody)))
 		return fmt.Errorf("request failed with status code: %d", resp.StatusCode)
 	}
 
-	// 重新创建一个新的 Reader 给 json.Decoder 使用
+	var refreshResp TokenResponse
+	if err := json.NewDecoder(bytes.NewReader(respBody)).Decode(&refreshResp); err != nil {
+		return fmt.Errorf("decode refresh response failed: %v", err)
+	}
+
+	// 使用新的 RefreshToken 刷新 Token
+	tokenConfig := TokenConfig{
+		ClientID:     os.Getenv("CLIENT_ID"),
+		RefreshToken: refreshResp.Result.RefreshToken,
+		ClientSecret: "-",
+		UserID:       os.Getenv("USER_ID"),
+	}
+
+	jsonData, err = json.Marshal(tokenConfig)
+	if err != nil {
+		return fmt.Errorf("marshal token config failed: %v", err)
+	}
+
+	logger.Log.Info("开始执行Token获取......")
+
+	resp, err = http.Post(
+		"https://api-sg-central.trae.ai/cloudide/api/v3/trae/oauth/ExchangeToken",
+		"application/json",
+		bytes.NewBuffer(jsonData),
+	)
+	if err != nil {
+		return fmt.Errorf("refresh token request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err = io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read response body failed: %v", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		logger.Log.Error(fmt.Sprintf("请求失败\n状态码: %d\n响应内容:\n%s", resp.StatusCode, string(respBody)))
+		return fmt.Errorf("request failed with status code: %d", resp.StatusCode)
+	}
+
 	var tokenResp TokenResponse
 	if err := json.NewDecoder(bytes.NewReader(respBody)).Decode(&tokenResp); err != nil {
 		return fmt.Errorf("decode token response failed: %v", err)
