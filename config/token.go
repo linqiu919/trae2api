@@ -106,6 +106,9 @@ func RefreshIDEToken() error {
 	// 保存新的refreshToken到内存中
 	refreshToken = refreshResp.Result.RefreshToken
 
+	logger.Log.Info("获取到新的 RefreshToken:\n" +
+		"RefreshToken: " + refreshToken + "\n")
+
 	// 使用新的 RefreshToken 刷新 Token
 	tokenConfig := TokenConfig{
 		ClientID:     os.Getenv("CLIENT_ID"),
