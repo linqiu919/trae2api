@@ -18,7 +18,6 @@ type Config struct {
 	GetFileIDURL    string
 	UploadFileURL   string
 	AuthToken       string
-	IDEVersion      string
 }
 
 var AppConfig Config
@@ -37,8 +36,7 @@ func InitConfig() error {
 		GetFileIDURL:    getEnv("GET_FILE_ID_URL", "https://imagex-ap-singapore-1.bytevcloudapi.com"),
 		UploadFileURL:   getEnv("UPLOAD_FILE_URL", "https://tos-sg16-share.vodupload.com"),
 		// 非必填配置
-		AuthToken:  getEnv("AUTH_TOKEN", ""),
-		IDEVersion: getEnv("IDE_VERSION", "1.0.4"),
+		AuthToken: getEnv("AUTH_TOKEN", ""),
 	}
 
 	// 初始化获取 Token
@@ -66,7 +64,6 @@ func InitConfig() error {
 		"RefreshTokenURL: " + AppConfig.RefreshTokenURL + "\n" +
 		"GetFileIDURL: " + AppConfig.GetFileIDURL + "\n" +
 		"UploadFileURL: " + AppConfig.UploadFileURL + "\n" +
-		"IDEVersion:   " + AppConfig.IDEVersion + "\n" +
 		"AuthToken:    " + AppConfig.AuthToken + "\n" +
 		"----------------------------------------")
 

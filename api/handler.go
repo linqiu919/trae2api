@@ -69,9 +69,9 @@ type TraeRequest struct {
 }
 
 type ChatHistory struct {
-	Role      string `json:"role"` // 修改为支持 user/assistant 格式
+	Role      string `json:"role"`
 	SessionID string `json:"session_id"`
-	Locale    string `json:"locale"` // 修改为支持 zh-cn/null 格式
+	Locale    string `json:"locale"`
 	Content   string `json:"content"`
 	Status    string `json:"status"`
 }
@@ -111,7 +111,7 @@ func GetModels(c *gin.Context) {
 	// 设置请求头
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-app-id", config.AppConfig.AppID)
-	req.Header.Set("x-ide-version", config.AppConfig.IDEVersion)
+	req.Header.Set("x-ide-version", "1.0.6")
 	req.Header.Set("x-ide-version-type", "stable")
 	req.Header.Set("x-ide-token", config.GetCurrentToken())
 	req.Header.Set("accept", "*/*")
@@ -185,18 +185,7 @@ func convertModelName(model string) string {
 	}
 }
 
-// 生成UUID
-func generateUUID() string {
-	return fmt.Sprintf("%x-%x-%x-%x-%x",
-		time.Now().UnixNano()&0xffffffff,
-		time.Now().UnixNano()&0xffff,
-		time.Now().UnixNano()&0xffff,
-		time.Now().UnixNano()&0xffff,
-		time.Now().UnixNano()&0xffffffffffff,
-	)
-}
-
-// 修改：使用整个对话历史生成会话ID
+// 使用整个对话历史生成会话ID
 func generateSessionIDFromMessages(messages []ChatMessage) string {
 	// 将所有消息连接成一个字符串
 	var conversationKey strings.Builder
@@ -367,12 +356,12 @@ func CreateChatCompletion(c *gin.Context) {
 	// 设置所有必需的请求头
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-app-id", config.AppConfig.AppID)
-	req.Header.Set("x-ide-version", config.AppConfig.IDEVersion)
+	req.Header.Set("x-ide-version", "1.0.6")
 	req.Header.Set("x-ide-version-type", "stable")
 	req.Header.Set("x-ide-token", config.GetCurrentToken())
 	req.Header.Set("x-session-id", sessionID)
 	req.Header.Set("accept", "*/*")
-	req.Header.Set("Host", "a0ai-api-sg.byteintlapi.com")
+	req.Header.Set("Host", "a0ai-api-sg.byteintlapi.com") // 可能没用
 
 	// 记录请求头
 	headers := make(map[string]string)
@@ -601,4 +590,45 @@ func CreateChatCompletion(c *gin.Context) {
 			}
 		}
 	}
+}
+
+// LoginPageHandler 处理登录页面请求
+func LoginPageHandler(c *gin.Context) {
+	c.HTML(http.StatusOK, "login.html", gin.H{
+		"error": "",
+	})
+}
+
+// VerifyPasswordHandler 处理密码验证
+func VerifyPasswordHandler(c *gin.Context) {
+	password := c.PostForm("password")
+
+	// 固定密码为 linuxdo
+	if password == "linuxdo" {
+		// 设置 Cookie 标记已验证
+		c.SetCookie("authenticated", "true", 3600*24, "/", "", false, true)
+
+		// 重定向到首页
+		c.Redirect(http.StatusFound, "/index")
+	} else {
+		// 密码错误，显示错误信息
+		c.HTML(http.StatusUnauthorized, "login.html", gin.H{
+			"error": "密码错误，请重试",
+		})
+	}
+}
+
+// IndexHandler 登录验证检查
+func IndexHandler(c *gin.Context) {
+	// 检查 Cookie 是否已验证
+	authenticated, _ := c.Cookie("authenticated")
+	if authenticated != "true" {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	// 已验证，显示正常页面
+	c.HTML(http.StatusOK, "index.html", gin.H{
+		"title": "Trae2API - 配置指南",
+	})
 }

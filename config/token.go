@@ -43,7 +43,7 @@ func RefreshIDEToken(baseURL string) error {
 
 	now := time.Now().Unix() * 1000
 
-	// 如果已经有了 refreshExpireAt，先检查 RefreshToken 是否过期
+	// 判断 RefreshToken 是否过期
 	if refreshExpireAt > 0 && now >= refreshExpireAt {
 		logger.Log.Error("RefreshToken 已过期，请更新环境变量中的 REFRESH_TOKEN\n" +
 			"----------------------------------------\n" +
@@ -79,8 +79,7 @@ func RefreshIDEToken(baseURL string) error {
 
 	logger.Log.Info("开始执行RefreshToken获取......")
 
-	resp, err := http.Post(
-		baseURL+"/cloudide/api/v3/trae/oauth/ExchangeToken",
+	resp, err := http.Post(baseURL+"/cloudide/api/v3/trae/oauth/ExchangeToken",
 		"application/json",
 		bytes.NewBuffer(jsonData),
 	)
@@ -104,7 +103,7 @@ func RefreshIDEToken(baseURL string) error {
 		return fmt.Errorf("decode refresh response failed: %v", err)
 	}
 
-	// 保存新的refreshToken到内存中
+	// 将新的refreshToken保存到内存中
 	refreshToken = refreshResp.Result.RefreshToken
 
 	logger.Log.Info("获取到新的 RefreshToken: " + refreshToken + "\n")

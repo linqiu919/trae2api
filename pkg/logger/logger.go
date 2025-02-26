@@ -59,8 +59,3 @@ func Init() {
 		Log.SetLevel(logrus.InfoLevel)
 	}
 }
-
-// WithFields 添加自定义字段的辅助函数
-func WithFields(fields map[string]interface{}) *logrus.Entry {
-	return Log.WithFields(logrus.Fields(fields))
-}

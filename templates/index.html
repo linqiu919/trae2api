@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trae2API - 说明文档</title>
+    <link rel="icon" href="Trae.png" type="image/png">
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2980b9;
+            --bg-color: #f8f9fa;
+            --text-color: #333;
+            --code-bg: #f1f1f1;
+            --border-color: #ddd;
+            --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            --transition-speed: 0.3s;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --primary-color: #2980b9;
+                --secondary-color: #3498db;
+                --bg-color: #121212;
+                --text-color: #e0e0e0;
+                --code-bg: #2a2a2a;
+                --border-color: #444;
+                --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            padding: 0;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 10px;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 5px 0;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 1000;
+        }
+
+        header .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+        }
+
+        header h1 {
+            margin-bottom: 0;
+        }
+
+        h2 {
+            font-size: 1.6rem;
+            margin: 20px 0 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h3 {
+            font-size: 1.3rem;
+            margin: 15px 0 8px;
+        }
+
+        p {
+            margin-bottom: 12px;
+        }
+
+        ul, ol {
+            margin-left: 20px;
+            margin-bottom: 12px;
+        }
+
+        li {
+            margin-bottom: 6px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .card {
+                background: #1e1e1e;
+            }
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        pre {
+            background-color: var(--code-bg);
+            padding: 12px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 12px 0;
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.9rem;
+        }
+
+        code {
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            background-color: var(--code-bg);
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 0.9rem;
+        }
+
+        .env-var {
+            display: flex;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .env-var:last-child {
+            border-bottom: none;
+        }
+
+        .env-var-name {
+            font-weight: bold;
+            width: 180px;
+            flex-shrink: 0;
+            margin-bottom: 5px;
+        }
+
+        .env-var-desc {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .platform-section {
+            margin-top: 20px;
+        }
+
+        .btn {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            transition: all var(--transition-speed);
+            font-weight: 500;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 15px;
+            color: #666;
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .collapsible {
+            background-color: #f8f9fa;
+            color: #444;
+            cursor: pointer;
+            padding: 15px;
+            width: 100%;
+            border: none;
+            text-align: left;
+            outline: none;
+            font-size: 1.1rem;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-weight: 500;
+            transition: 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .active, .collapsible:hover {
+            background-color: #e9ecef;
+        }
+
+        .collapsible:after {
+            content: '\002B';
+            color: #777;
+            font-weight: bold;
+            float: right;
+            margin-left: 5px;
+            font-size: 1.2rem;
+        }
+
+        .active:after {
+            content: "\2212";
+        }
+
+        .content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            background-color: #fafafa;
+            border-radius: 0 0 6px 6px;
+            margin-bottom: 10px;
+            padding: 0 15px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .collapsible {
+                background-color: #2a2a2a;
+                color: #e0e0e0;
+            }
+
+            .active, .collapsible:hover {
+                background-color: #333;
+            }
+
+            .content {
+                background-color: #1a1a1a;
+            }
+        }
+
+        .copy-container {
+            margin-top: 10px;
+            position: relative;
+        }
+
+        .copy-text {
+            background-color: var(--code-bg);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin-bottom: 5px;
+        }
+
+        .copy-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.3s;
+        }
+
+        .copy-btn:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .success-message {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .token-generator {
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .token-display {
+            background-color: var(--code-bg);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: monospace;
+            flex-grow: 1;
+            word-break: break-all;
+        }
+
+        .generate-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .generate-btn:hover {
+            background-color: var(--secondary-color);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            h2 {
+                font-size: 1.4rem;
+            }
+
+            .card {
+                padding: 15px;
+            }
+
+            .collapsible {
+                padding: 12px;
+                font-size: 1rem;
+            }
+
+            .env-var-name {
+                width: 100%;
+                margin-bottom: 8px;
+            }
+        }
+
+        /* 添加一个占位元素，防止内容被固定的header遮挡 */
+        .header-spacer {
+            height: 100px; /* 增加高度，给内容和header之间留出更多空间 */
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div class="container">
+        <h1>Trae2API</h1>
+    </div>
+</header>
+
+<div class="header-spacer"></div>
+
+<div class="container">
+    <div class="card">
+        <h2>项目介绍</h2>
+        <p>Trae2API 是一个将 Trae API 转换为 OpenAI API 格式的服务，仅用于技术交流学习，不可用于任何商业行为！</p>
+        <p> 声明：本项目未进行任何逆向、破解，仅提供基于明文HTTP API的包装服务。</p>
+
+        <h3>功能特点</h3>
+        <ul>
+            <li>支持获取模型列表</li>
+            <li>支持多轮对话</li>
+            <li>支持流式输出</li>
+            <li>支持 Docker 部署</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <h2>环境变量获取指南</h2>
+        <p>要使用 Trae2API，您需要获取以下环境变量。请按照对应平台的指南操作：</p>
+
+        <button class="collapsible">Mac 平台</button>
+        <div class="content">
+            <p>方式一：</p>
+            <p>执行以下脚本一键获取需要的环境变量值（作者:<a href="https://linux.do/u/im594/summary" target="_blank">Serendipity</a>）：</p>
+            <pre>curl -fsSL https://gist.githubusercontent.com/IM594/b0bbcdc3eb6a5e849f5e306246781a48/raw/get_trae_tokens.sh | bash</pre>
+            <p>方式二：</p>
+            <p>参考Windows平台查找指定文件获取环境变量</p>
+        </div>
+
+        <button class="collapsible">Windows 平台</button>
+        <div class="content">
+            <ol>
+                <li>安装 <code>everything</code> 工具</li>
+                <li>搜索 <code>storge.json</code> 文件获取 RefreshToken,、UserID</li>
+                <li>搜索 <code>main.log</code> 文件获取 ClientID</li>
+                <li>搜索 <code>ai_1_stdout.log</code> 文件获取 AppID</li>
+                <li>开启抓包软件 <code>在Trae上，上传一个图片，抓包软件查看上传地址</code>获取文件地址相关环境变量</li>
+            </ol>
+        </div>
+
+        <button class="collapsible">生成随机 AUTH_TOKEN</button>
+        <div class="content">
+            <p>您可以使用以下随机生成的 Token 作为 AUTH_TOKEN：</p>
+            <div class="token-generator">
+                <div class="token-display" id="random-token">生成中...</div>
+                <button class="generate-btn" onclick="generateRandomToken()">重新生成</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>必需的环境变量</h2>
+
+        <button class="collapsible">APP_ID</button>
+        <div class="content">
+            <div class="env-var">
+                <div class="env-var-desc">
+                    <p>Trae API 应用 ID，可从 ai_1_stdout.log 文件中获取</p>
+                </div>
+            </div>
+        </div>
+
+        <button class="collapsible">CLIENT_ID</button>
+        <div class="content">
+            <div class="env-var">
+                <div class="env-var-desc">
+                    <p>OAuth Client ID，可从 main.log 文件中获取</p>
+                </div>
+            </div>
+        </div>
+
+        <button class="collapsible">REFRESH_TOKEN</button>
+        <div class="content">
+            <div class="env-var">
+                <div class="env-var-desc">
+                    <p>OAuth Refresh Token，可从 storge.json 文件中获取</p>
+                </div>
+            </div>
+        </div>
+
+        <button class="collapsible">USER_ID</button>
+        <div class="content">
+            <div class="env-var">
+                <div class="env-var-desc">
+                    <p>User ID，可从 main.log 文件中获取</p>
+                </div>
+            </div>
+        </div>
+
+        <button class="collapsible">AUTH_TOKEN</button>
+        <div class="content">
+            <div class="env-var">
+                <div class="env-var-desc">
+                    <p>API 访问鉴权 Token，可自定义设置</p>
+                    <p>建议使用数字+字母生成的字符串确保安全性，不要包含特殊字符</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="card">
+        <h2>可选的环境变量</h2>
+
+        <button class="collapsible">BASE_URL</button>
+        <div class="content">
+            <div class="env-var">
+                <div class="env-var-desc">
+                    <p>获取模型、对话、获取文件上传Token的基本路径（如果你是亚洲区域，可以忽略此变量）</p>
+                    <p>默认值：https://a0ai-api-sg.byteintlapi.com</p>
+                </div>
+            </div>
+        </div>
+
+        <button class="collapsible">REFRESH_TOKEN_URL</button>
+        <div class="content">
+            <div class="env-var">
+                <div class="env-var-desc">
+                    <p>刷新RefreshToken和Token的基本路径（如果你是亚洲区域，可以忽略此变量）</p>
+                    <p>默认值：https://api-sg-central.trae.ai</p>
+                </div>
+            </div>
+        </div>
+
+        <button class="collapsible">GET_FILE_ID_URL</button>
+        <div class="content">
+            <div class="env-var">
+                <div class="env-var-desc">
+                    <p>获取上传文件ID的基础路径（如果你是亚洲区域，可以忽略此变量）</p>
+                    <p>默认值：https://imagex-ap-singapore-1.bytevcloudapi.com</p>
+                </div>
+            </div>
+        </div>
+
+        <button class="collapsible">UPLOAD_FILE_URL</button>
+        <div class="content">
+            <div class="env-var">
+                <div class="env-var-desc">
+                    <p>上传文件的基础路径（如果你是亚洲区域，可以忽略此变量）</p>
+                    <p>默认值：https://tos-sg16-share.vodupload.com</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>API 使用示例</h2>
+
+        <button class="collapsible">获取模型列表</button>
+        <div class="content">
+                <pre>GET http://localhost:17080/v1/models
+Authorization: Bearer your_auth_token</pre>
+            <div class="copy-container">
+                <div class="copy-text">curl http://localhost:17080/v1/models -H "Authorization: Bearer
+                    your_auth_token"
+                </div>
+                <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling.textContent)">复制
+                </button>
+                <span class="success-message">已复制!</span>
+            </div>
+        </div>
+
+        <button class="collapsible">发起对话</button>
+        <div class="content">
+                <pre>POST http://localhost:17080/v1/chat/completions
+Authorization: Bearer your_auth_token
+Content-Type: application/json
+
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "user",
+      "content": "你好"
+    }
+  ],
+  "stream": false
+}</pre>
+            <div class="copy-container">
+                <div class="copy-text">curl http://localhost:17080/v1/chat/completions \
+                    -H "Authorization: Bearer your_auth_token" \
+                    -H "Content-Type: application/json" \
+                    -d '{"model":"gpt-4o","messages":[{"role":"user","content":"你好"}],"stream":false}'
+                </div>
+                <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling.textContent)">复制
+                </button>
+                <span class="success-message">已复制!</span>
+            </div>
+        </div>
+
+        <button class="collapsible">流式对话</button>
+        <div class="content">
+                <pre>POST http://localhost:17080/v1/chat/completions
+Authorization: Bearer your_auth_token
+Content-Type: application/json
+
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "user",
+      "content": "你好"
+    }
+  ],
+  "stream": true
+}</pre>
+            <div class="copy-container">
+                <div class="copy-text">curl http://localhost:17080/v1/chat/completions \
+                    -H "Authorization: Bearer your_auth_token" \
+                    -H "Content-Type: application/json" \
+                    -d '{"model":"gpt-4o","messages":[{"role":"user","content":"你好"}],"stream":true}'
+                </div>
+                <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling.textContent)">复制
+                </button>
+                <span class="success-message">已复制!</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>常见问题解决方案</h2>
+
+        <button class="collapsible">我可以转发本项目到其他地方吗？</button>
+        <div class="content">
+            <div class="env-var">
+                <div class="env-var-desc">
+                    <p>不可以，此项目如果出现在Linux.do3级区域外的地方，则该项目会即刻停止更新并私有化镜像。</p>
+                </div>
+            </div>
+        </div>
+
+        <button class="collapsible">为什么AI不回答我的问题？</button>
+        <div class="content">
+            <div class="env-var">
+                <div class="env-var-desc">
+                    <p>Trae被写入了系统提示词，仅会回复代码类问题。</p>
+                </div>
+            </div>
+        </div>
+
+        <button class="collapsible">为什么我没有找到环境变量？</button>
+        <div class="content">
+            <div class="env-var">
+                <div class="env-var-desc">
+                    <p>请先向AI发起一次对话，然后再查找相关日志文件。</p>
+                </div>
+            </div>
+        </div>
+
+        <button class="collapsible">为什么我的Trae登录失效/无法使用了？</button>
+        <div class="content">
+            <div class="env-var">
+                <div class="env-var-desc">
+                    <p>Trae2api会使用本地的refreshToken来刷新Token，而refreshToken使用一次之后立即失效，会导致Trae本身记录的refreshToken失效无法刷新Token，如果你有软件使用需求，建议放弃使用本项目。</p>
+                </div>
+            </div>
+        </div>
+
+        <button class="collapsible">refreshToken有效期是多久？</button>
+        <div class="content">
+            <div class="env-var">
+                <div class="env-var-desc">
+                    <p>目前接口返回的有效期是6个月，超过6个月后可能需要手动替换（估计不到那时候项目已经不可用了😂）</p>
+                </div>
+            </div>
+        </div>
+
+        <button class="collapsible">为什么容器启动报错refreshToken invalid？</button>
+        <div class="content">
+            <div class="env-var">
+                <div class="env-var-desc">
+                    <p>
+                        当前配置的refreshToken失效了，请退出Trae的账号，重新登录，然后获取最新的refreshToken填入环境变量中。</p>
+                </div>
+            </div>
+        </div>
+
+        <button class="collapsible">为什么我本地测试接口没问题，用容器启动就会报错？</button>
+        <div class="content">
+            <div class="env-var">
+                <div class="env-var-desc">
+                    <p>
+                        Trae在不同的区域调用的是不同的接口地址，目前已知有sg（新加坡）和us（美国）两个不同的地址，默认使用sg的接口，你可以更换地址相关的环境变量以使用指定的接口地址。</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<footer>
+    <p>Trae2API - 将 Trae API 转换为 OpenAI API 格式的封装服务</p>
+    <p>© <span id="current-year"></span> - <a href="https://linux.do" target="_blank">Linux.do</a></p>
+</footer>
+
+<script>
+    // 设置当前年份
+    document.getElementById('current-year').textContent = new Date().getFullYear();
+
+    // 折叠面板功能
+    var coll = document.getElementsByClassName("collapsible");
+    for (var i = 0; i < coll.length; i++) {
+        coll[i].addEventListener("click", function () {
+            this.classList.toggle("active");
+            var content = this.nextElementSibling;
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        });
+    }
+
+    // 复制到剪贴板功能
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(function () {
+            // 找到当前点击的按钮
+            var activeButton = document.activeElement;
+            // 找到对应的成功消息元素
+            var successMsg = activeButton.nextElementSibling;
+            successMsg.style.opacity = "1";
+            setTimeout(function () {
+                successMsg.style.opacity = "0";
+            }, 2000);
+        }, function (err) {
+            console.error('无法复制文本: ', err);
+        });
+    }
+
+    // 生成随机 Token
+    function generateRandomToken() {
+        var chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        var token = '';
+        for (var i = 0; i < 32; i++) {
+            token += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        document.getElementById('random-token').textContent = token;
+    }
+
+    // 页面加载时自动生成一个随机 Token
+    window.onload = function () {
+        generateRandomToken();
+    };
+</script>
+</body>
+</html> 
