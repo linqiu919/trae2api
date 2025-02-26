@@ -107,8 +107,7 @@ func RefreshIDEToken(baseURL string) error {
 	// 保存新的refreshToken到内存中
 	refreshToken = refreshResp.Result.RefreshToken
 
-	logger.Log.Info("获取到新的 RefreshToken:\n" +
-		"RefreshToken: " + refreshToken + "\n")
+	logger.Log.Info("获取到新的 RefreshToken: " + refreshToken + "\n")
 
 	// 使用新的 RefreshToken 刷新 Token
 	tokenConfig := TokenConfig{
@@ -158,7 +157,9 @@ func RefreshIDEToken(baseURL string) error {
 	logger.Log.Info("Token 获取成功\n" +
 		"----------------------------------------\n" +
 		"当前时间: " + time.Now().Format("2006-01-02 15:04:05") + "\n" +
+		"Token: " + currentToken + "\n" +
 		"Token 有效期至: " + time.UnixMilli(tokenExpireAt).Format("2006-01-02 15:04:05") + "\n" +
+		"RefreshToken: " + refreshToken + "\n" +
 		"RefreshToken 有效期至: " + time.UnixMilli(refreshExpireAt).Format("2006-01-02 15:04:05") + "\n" +
 		"----------------------------------------")
 
