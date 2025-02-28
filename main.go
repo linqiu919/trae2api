@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/trae2api/api"
 	"github.com/trae2api/config"
+	"github.com/trae2api/middleware"
 	"github.com/trae2api/pkg/logger"
 )
 
@@ -20,6 +21,9 @@ func main() {
 	}
 
 	r := gin.Default()
+
+	// 跨域
+	r.Use(middleware.CORS())
 
 	// 添加鉴权中间件
 	r.Use(api.AuthMiddleware())
