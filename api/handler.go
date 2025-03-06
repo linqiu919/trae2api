@@ -111,7 +111,8 @@ func GetModels(c *gin.Context) {
 	// 设置请求头
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-app-id", config.AppConfig.AppID)
-	req.Header.Set("x-ide-version", "1.0.6")
+	req.Header.Set("x-ide-version", "1.0.10")
+	req.Header.Set("x-ide-version-code", "20250303")
 	req.Header.Set("x-ide-version-type", "stable")
 	req.Header.Set("x-ide-token", config.GetCurrentToken())
 	req.Header.Set("accept", "*/*")
@@ -163,6 +164,12 @@ func GetModels(c *gin.Context) {
 
 	// 将 Trae 的模型数据转换为 OpenAI 格式
 	for _, m := range traeResp.ModelConfigs {
+		if m.Name == "aws_sdk_claude37_sonnet" {
+			m.Name = "claude-3-7-sonnet"
+		}
+		if m.Name == "claude3.5" {
+			m.Name = "claude-3-5-sonnet"
+		}
 		models.Data = append(models.Data, Model{
 			ID:      m.Name,
 			Object:  "model",
@@ -176,12 +183,16 @@ func GetModels(c *gin.Context) {
 // 转换模型名称
 func convertModelName(model string) string {
 	switch model {
-	case "claude-3-5-sonnet-20240620", "claude-3-5-sonnet-20241022":
+	case "claude-3-5-sonnet-20240620", "claude-3-5-sonnet-20241022", "claude-3-5-sonnet":
 		return "claude3.5"
+	case "claude-3-7-sonnet-20250219", "claude-3-7-sonnet", "claude-3-7":
+		return "aws_sdk_claude37_sonnet"
 	case "gpt-4o-mini,gpt-4o-mini-2024-07-18", "gpt-4o-latest":
 		return "gpt-4o"
 	case "deepseek-chat", "deepseek-coder", "deepseek-v3":
 		return "deepseek-V3"
+	case "deepseek-reasoner", "deepseek-r1":
+		return "deepseek-R1"
 	default:
 		return model
 	}
@@ -394,7 +405,8 @@ func CreateChatCompletion(c *gin.Context) {
 	// 设置所有必需的请求头
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-app-id", config.AppConfig.AppID)
-	req.Header.Set("x-ide-version", "1.0.6")
+	req.Header.Set("x-ide-version", "1.0.10")
+	req.Header.Set("x-ide-version-code", "20250303")
 	req.Header.Set("x-ide-version-type", "stable")
 	req.Header.Set("x-ide-token", config.GetCurrentToken())
 	req.Header.Set("x-session-id", sessionID)
