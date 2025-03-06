@@ -51,7 +51,7 @@
         }
 
         header {
-            background-color: var(--primary-color);
+            background-color: #c42a38;
             color: white;
             padding: 5px 0;
             margin-bottom: 20px;
@@ -368,7 +368,7 @@
 <body>
 <header>
     <div class="container">
-        <h1>Trae2API</h1>
+        <h1>Trae2API-v1.0.5</h1>
     </div>
 </header>
 
@@ -387,16 +387,22 @@
             <li>支持流式输出</li>
             <li>支持 Docker 部署</li>
         </ul>
+
+        <h3>不会支持</h3>
+        <ul>
+            <li>代理访问，请部署在非国内的其他亚洲区域服务器</li>
+            <li>多账号轮询永远不会支持，虽然很简单</li>
+        </ul>
     </div>
 
     <div class="card">
         <h2>环境变量获取指南</h2>
-        <p>要使用 Trae2API，您需要获取以下环境变量。请按照对应平台的指南操作：</p>
+        <p>要使用 Trae2API最新版本，您需要获取以下环境变量。请按照对应平台的指南操作：</p>
 
         <button class="collapsible">Mac 平台</button>
         <div class="content">
             <p>方式一：</p>
-            <p>执行以下脚本一键获取需要的环境变量值（作者:<a href="https://linux.do/u/im594/summary" target="_blank">Serendipity</a>）：</p>
+            <p>执行以下脚本一键获取需要的环境变量值（作者:<a href="https://linux.do/u/im594/summary" target="_blank">linuxdo-Serendipity</a>）：</p>
             <pre>curl -fsSL https://gist.githubusercontent.com/IM594/b0bbcdc3eb6a5e849f5e306246781a48/raw/get_trae_tokens.sh | bash</pre>
             <p>方式二：</p>
             <p>参考Windows平台查找指定文件获取环境变量</p>
@@ -405,6 +411,10 @@
         <button class="collapsible">Windows 平台</button>
         <div class="content">
             <ol>
+                <p>脚本获取（作者:<a href="https://linux.do/u/keung/summary" target="_blank">linuxdo-keung</a>）:</p>
+                <pre>Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass</pre>
+                <pre>.\get_trae_tokens.ps1</pre>
+                <p>查询获取:</p>
                 <li>安装 <code>everything</code> 工具</li>
                 <li>搜索 <code>storge.json</code> 文件获取 RefreshToken,、UserID</li>
                 <li>搜索 <code>main.log</code> 文件获取 ClientID</li>
@@ -482,7 +492,7 @@
             <div class="env-var">
                 <div class="env-var-desc">
                     <p>获取模型、对话、获取文件上传Token的基本路径（如果你是亚洲区域，可以忽略此变量）</p>
-                    <p>默认值：https://a0ai-api-sg.byteintlapi.com</p>
+                    <p>默认值：https://trae-api-sg.mchost.guru</p>
                 </div>
             </div>
         </div>
@@ -497,7 +507,7 @@
             </div>
         </div>
 
-        <button class="collapsible">GET_FILE_ID_URL</button>
+        <button class="collapsible">GET_FILE_ID_URL（暂未使用）</button>
         <div class="content">
             <div class="env-var">
                 <div class="env-var-desc">
@@ -507,7 +517,7 @@
             </div>
         </div>
 
-        <button class="collapsible">UPLOAD_FILE_URL</button>
+        <button class="collapsible">UPLOAD_FILE_URL（暂未使用）</button>
         <div class="content">
             <div class="env-var">
                 <div class="env-var-desc">
@@ -599,7 +609,7 @@ Content-Type: application/json
         <div class="content">
             <div class="env-var">
                 <div class="env-var-desc">
-                    <p>不可以，此项目如果出现在Linux.do3级区域外的地方，则该项目会即刻停止更新并私有化镜像。</p>
+                    <p>不可以，此项目如果出现在Linux.do区域外的公网网站，则该项目会即刻停止更新并私有化镜像，交流需求可以加底部tg群。</p>
                 </div>
             </div>
         </div>
@@ -626,7 +636,7 @@ Content-Type: application/json
         <div class="content">
             <div class="env-var">
                 <div class="env-var-desc">
-                    <p>Trae2api会使用本地的refreshToken来刷新Token，而refreshToken使用一次之后立即失效，会导致Trae本身记录的refreshToken失效无法刷新Token，如果你有软件使用需求，建议放弃使用本项目。</p>
+                    <p>Trae2api会使用本地的refreshToken来刷新Token，而refreshToken使用一次之后立即失效，会导致Trae本身记录的refreshToken失效无法刷新Token，如果你有Trae本身的使用需求，建议放弃使用本项目，或者在虚拟机或其他电脑中额外开启一个Trea用来提供2api服务。</p>
                 </div>
             </div>
         </div>
@@ -635,7 +645,7 @@ Content-Type: application/json
         <div class="content">
             <div class="env-var">
                 <div class="env-var-desc">
-                    <p>目前接口返回的有效期是6个月，超过6个月后可能需要手动替换（估计不到那时候项目已经不可用了😂）</p>
+                    <p>目前已知refreshToken可持续刷新，理论字节不调整，可以持续使用。</p>
                 </div>
             </div>
         </div>
@@ -645,7 +655,7 @@ Content-Type: application/json
             <div class="env-var">
                 <div class="env-var-desc">
                     <p>
-                        当前配置的refreshToken失效了，请退出Trae的账号，重新登录，然后获取最新的refreshToken填入环境变量中。</p>
+                        当前配置的refreshToken失效了，请退出Trae的账号，重新登录，然后获取最新的refreshToken填入环境变量中,获取之后就不需要再打开Trae了。</p>
                 </div>
             </div>
         </div>
@@ -660,12 +670,27 @@ Content-Type: application/json
             </div>
         </div>
 
+        <button class="collapsible">后面会解除仅代码问题回复限制吗？</button>
+        <div class="content">
+            <div class="env-var">
+                <div class="env-var-desc">
+                    <p>
+                        尝试过，效果不是很好，遂放弃，刚好也防止号商拿去逆向。</p>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 
 <footer>
     <p>Trae2API - 将 Trae API 转换为 OpenAI API 格式的封装服务</p>
-    <p>© <span id="current-year"></span> - <a href="https://linux.do" target="_blank">Linux.do</a></p>
+    <p style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+        © <span id="current-year"></span> - <a href="https://linux.do" target="_blank">Linux.do</a>
+        <a href="https://t.me/+AfGumJADbLYzYzE1" target="_blank" class="btn" style="padding: 4px 8px; font-size: 0.9em;">
+            加入 Telegram 群组
+        </a>
+    </p>
 </footer>
 
 <script>

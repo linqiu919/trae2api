@@ -30,8 +30,8 @@ type Model struct {
 }
 
 type ChatMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role    string      `json:"role"`
+	Content interface{} `json:"content"`
 }
 
 type ChatRequest struct {
@@ -178,8 +178,10 @@ func convertModelName(model string) string {
 	switch model {
 	case "claude-3-5-sonnet-20240620", "claude-3-5-sonnet-20241022":
 		return "claude3.5"
-	case "gpt-4o-mini,gpt-4o-mini-2024-07-18":
+	case "gpt-4o-mini,gpt-4o-mini-2024-07-18", "gpt-4o-latest":
 		return "gpt-4o"
+	case "deepseek-chat", "deepseek-coder", "deepseek-v3":
+		return "deepseek-V3"
 	default:
 		return model
 	}
@@ -192,7 +194,7 @@ func generateSessionIDFromMessages(messages []ChatMessage) string {
 	for _, msg := range messages[:1] { // 只使用第一轮对话来生成sessionID
 		conversationKey.WriteString(msg.Role)
 		conversationKey.WriteString(": ")
-		conversationKey.WriteString(msg.Content)
+		conversationKey.WriteString(fmt.Sprintf("%v", msg.Content))
 		conversationKey.WriteString("\n")
 	}
 
@@ -217,8 +219,41 @@ func CreateChatCompletion(c *gin.Context) {
 
 	var openAIReq ChatRequest
 	if err := c.BindJSON(&openAIReq); err != nil {
+		logger.Log.Errorf("解析请求体失败: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	// 控制台打印标准请求体Json格式数据
+	reqJson, err := json.Marshal(openAIReq)
+	if err != nil {
+		logger.Log.Errorf("JSON编码失败: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	fmt.Printf("当前对话请求: %v\n", string(reqJson))
+
+	// 添加内容格式转换逻辑
+	for i, msg := range openAIReq.Messages {
+		switch v := msg.Content.(type) {
+		case []interface{}:
+			// 如果是数组，只保留第一条消息的text内容
+			contentStr := ""
+			if len(v) > 0 {
+				if msgObj, ok := v[0].(map[string]interface{}); ok {
+					if text, ok := msgObj["text"].(string); ok {
+						contentStr = text
+					}
+				}
+			}
+			openAIReq.Messages[i].Content = contentStr
+		case string:
+			// 如果已经是字符串，无需转换
+			continue
+		default:
+			// 其他类型转换为字符串
+			openAIReq.Messages[i].Content = fmt.Sprintf("%v", v)
+		}
 	}
 
 	// 生成会话ID
@@ -238,6 +273,9 @@ func CreateChatCompletion(c *gin.Context) {
 			Variables:  "{\"terminal_context\":[]}",
 		},
 	}
+
+	// 获取最后一条消息的内容并转换为字符串
+	lastContent := fmt.Sprintf("%v", openAIReq.Messages[len(openAIReq.Messages)-1].Content)
 
 	// 构建 variables
 	variablesJSON := struct {
@@ -262,14 +300,14 @@ func CreateChatCompletion(c *gin.Context) {
 	}{
 		Language:       "",
 		Locale:         "zh-cn",
-		Input:          openAIReq.Messages[len(openAIReq.Messages)-1].Content,
-		RawInput:       openAIReq.Messages[len(openAIReq.Messages)-1].Content,
+		Input:          lastContent,
+		RawInput:       lastContent,
 		IsInlineChat:   false,
 		IsCommand:      false,
 		UseFilepath:    true,
 		CurrentTime:    time.Now().Format("20060102 15:04:05，星期二"),
 		BadgeClickable: true,
-		WorkspacePath:  "/Users/edy/Documents/go_project/wechat-bot-next", // 这个好像没用？
+		WorkspacePath:  "/Users/edy/Documents/go_project/wechat-bot-next",
 	}
 
 	// 转换历史消息
@@ -282,7 +320,7 @@ func CreateChatCompletion(c *gin.Context) {
 
 		chatHistory = append(chatHistory, ChatHistory{
 			Role:      msg.Role,
-			Content:   msg.Content,
+			Content:   fmt.Sprintf("%v", msg.Content),
 			Status:    "success",
 			Locale:    locale,
 			SessionID: sessionID,
@@ -316,7 +354,7 @@ func CreateChatCompletion(c *gin.Context) {
 	}
 
 	traeReq := TraeRequest{
-		UserInput:                  openAIReq.Messages[len(openAIReq.Messages)-1].Content,
+		UserInput:                  lastContent,
 		IntentName:                 "general_qa_intent",
 		Variables:                  string(variablesStr),
 		ContextResolvers:           contextResolvers,
@@ -361,7 +399,6 @@ func CreateChatCompletion(c *gin.Context) {
 	req.Header.Set("x-ide-token", config.GetCurrentToken())
 	req.Header.Set("x-session-id", sessionID)
 	req.Header.Set("accept", "*/*")
-	req.Header.Set("Host", "a0ai-api-sg.byteintlapi.com") // 可能没用
 
 	// 记录请求头
 	headers := make(map[string]string)

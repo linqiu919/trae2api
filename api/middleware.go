@@ -1,6 +1,8 @@
 package api
 
 import (
+	"fmt"
+	"github.com/trae2api/pkg/logger"
 	"net/http"
 	"strings"
 
@@ -19,6 +21,7 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
+			logger.Log.Error("Authorization is empty")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is required"})
 			c.Abort()
 			return
@@ -29,6 +32,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		token = strings.TrimSpace(token)
 
 		if token != config.AppConfig.AuthToken {
+			logger.Log.Error(fmt.Sprintf("Invalid authorization token:%s", token))
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization token"})
 			c.Abort()
 			return

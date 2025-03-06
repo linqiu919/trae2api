@@ -37,9 +37,15 @@ var (
 	refreshToken    string
 )
 
-func RefreshIDEToken(baseURL string) error {
+func RefreshIDEToken(baseURL string, codingMode bool, codingToken string) error {
 	tokenMutex.Lock()
 	defer tokenMutex.Unlock()
+
+	if codingMode {
+		logger.Log.Info("当前为Coding模式，将使用环境变量预设的Trea Token！")
+		currentToken = codingToken
+		return nil
+	}
 
 	now := time.Now().Unix() * 1000
 
@@ -84,6 +90,7 @@ func RefreshIDEToken(baseURL string) error {
 		bytes.NewBuffer(jsonData),
 	)
 	if err != nil {
+		logger.Log.Error("请求RefreshToken刷新失败: " + err.Error())
 		return fmt.Errorf("refresh token request failed: %v", err)
 	}
 	defer resp.Body.Close()
@@ -100,6 +107,7 @@ func RefreshIDEToken(baseURL string) error {
 
 	var refreshResp TokenResponse
 	if err := json.NewDecoder(bytes.NewReader(respBody)).Decode(&refreshResp); err != nil {
+		logger.Log.Error("解析 RefreshToken 响应失败: " + err.Error())
 		return fmt.Errorf("decode refresh response failed: %v", err)
 	}
 
@@ -147,13 +155,12 @@ func RefreshIDEToken(baseURL string) error {
 	if err := json.NewDecoder(bytes.NewReader(respBody)).Decode(&tokenResp); err != nil {
 		return fmt.Errorf("decode token response failed: %v", err)
 	}
-	logger.Log.Info("请求远端成功,即将更新Token")
 
 	currentToken = tokenResp.Result.Token
 	tokenExpireAt = tokenResp.Result.TokenExpireAt
 	refreshExpireAt = tokenResp.Result.RefreshExpireAt
 
-	logger.Log.Info("Token 获取成功\n" +
+	logger.Log.Info("刷新Token与RefreshToken成功:\n" +
 		"----------------------------------------\n" +
 		"当前时间: " + time.Now().Format("2006-01-02 15:04:05") + "\n" +
 		"Token: " + currentToken + "\n" +
