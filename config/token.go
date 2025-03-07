@@ -131,8 +131,7 @@ func RefreshIDEToken(baseURL string, codingMode bool, codingToken string) error 
 
 	logger.Log.Info("开始执行Token获取......")
 
-	resp, err = http.Post(
-		"https://api-sg-central.trae.ai/cloudide/api/v3/trae/oauth/ExchangeToken",
+	resp, err = http.Post(baseURL+"/cloudide/api/v3/trae/oauth/ExchangeToken",
 		"application/json",
 		bytes.NewBuffer(jsonData),
 	)
