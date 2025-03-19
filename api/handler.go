@@ -471,6 +471,8 @@ func CreateChatCompletion(c *gin.Context) {
 
 	// 读取响应
 	reader := bufio.NewReader(resp.Body)
+	thinkStartType := new(bool)
+	thinkEndType := new(bool)
 	if !openAIReq.Stream {
 		// 非流式响应，需要收集所有内容
 		var fullResponse string
@@ -508,12 +510,39 @@ func CreateChatCompletion(c *gin.Context) {
 				switch event {
 				case "output":
 					var outputData struct {
-						Response string `json:"response"`
+						Response         string `json:"response"`
+						ReasoningContent string `json:"reasoning_content"`
 					}
+
+					var deltaContent string
+
 					if err := json.Unmarshal([]byte(data), &outputData); err != nil {
 						continue
 					}
-					fullResponse += outputData.Response
+
+					// 	thinking start
+					if outputData.ReasoningContent != "" {
+						if !*thinkStartType {
+							deltaContent = "<think>\n\n" + outputData.ReasoningContent
+							*thinkStartType = true
+							*thinkEndType = false
+						} else {
+							deltaContent = outputData.ReasoningContent
+						}
+					}
+
+					// thinking end
+					if outputData.Response != "" {
+						if *thinkStartType && !*thinkEndType {
+							deltaContent = "</think>\n\n" + outputData.Response
+							*thinkStartType = false
+							*thinkEndType = true
+						} else {
+							deltaContent = outputData.Response
+						}
+					}
+
+					fullResponse += deltaContent
 				case "done":
 					// 构建完整的非流式响应
 					response := map[string]interface{}{
@@ -582,18 +611,45 @@ func CreateChatCompletion(c *gin.Context) {
 				continue
 			}
 			data := strings.TrimPrefix(dataLine, "data: ")
-
+			fmt.Println(data)
 			switch event {
 			case "output":
+				//fmt.Println(data)
 				var outputData struct {
-					Response string `json:"response"`
+					Response         string `json:"response"`
+					ReasoningContent string `json:"reasoning_content"`
 				}
+
+				var deltaContent string
+
 				if err := json.Unmarshal([]byte(data), &outputData); err != nil {
 					continue
 				}
 
-				if outputData.Response == "" {
+				if outputData.Response == "" && outputData.ReasoningContent == "" {
 					continue
+				}
+
+				// 	thinking start
+				if outputData.ReasoningContent != "" {
+					if !*thinkStartType {
+						deltaContent = "<think>\n\n" + outputData.ReasoningContent
+						*thinkStartType = true
+						*thinkEndType = false
+					} else {
+						deltaContent = outputData.ReasoningContent
+					}
+				}
+
+				// thinking end
+				if outputData.Response != "" {
+					if *thinkStartType && !*thinkEndType {
+						deltaContent = "</think>\n\n" + outputData.Response
+						*thinkStartType = false
+						*thinkEndType = true
+					} else {
+						deltaContent = outputData.Response
+					}
 				}
 
 				// 转换为 OpenAI 流式格式
@@ -606,7 +662,7 @@ func CreateChatCompletion(c *gin.Context) {
 						{
 							"index": 0,
 							"delta": map[string]interface{}{
-								"content": outputData.Response,
+								"content": deltaContent,
 							},
 							"finish_reason": nil,
 						},

@@ -3,7 +3,9 @@ package config
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/go-redis/redis/v8"
 	"io"
 	"net/http"
 	"os"
@@ -67,7 +69,19 @@ func RefreshIDEToken(baseURL string, codingMode bool, codingToken string) error 
 	// 使用内存中的refreshToken（如果存在），否则使用环境变量中的refreshToken
 	currentRefreshToken := refreshToken
 	if currentRefreshToken == "" {
-		currentRefreshToken = os.Getenv("REFRESH_TOKEN")
+		// 使用redis中的refreshToken
+		if RefreshTokenCacheEnabled == "true" {
+			refreshTokenStr, err := RedisGet(fmt.Sprintf("REFRESH_TOKEN:%s", AppConfig.AppID))
+			if errors.Is(err, redis.Nil) || refreshTokenStr == "" {
+				currentRefreshToken = os.Getenv("REFRESH_TOKEN")
+			} else if err != nil {
+				logger.Log.Errorf("Redis get refreshToken error:  %v", err)
+			} else {
+				currentRefreshToken = refreshTokenStr
+			}
+		} else {
+			currentRefreshToken = os.Getenv("REFRESH_TOKEN")
+		}
 	}
 
 	// 请求新的 Refresh Token
@@ -158,6 +172,19 @@ func RefreshIDEToken(baseURL string, codingMode bool, codingToken string) error 
 	currentToken = tokenResp.Result.Token
 	tokenExpireAt = tokenResp.Result.TokenExpireAt
 	refreshExpireAt = tokenResp.Result.RefreshExpireAt
+
+	// redis
+	if RefreshTokenCacheEnabled == "true" {
+		err := RedisSet(fmt.Sprintf("TOKEN:%s", AppConfig.AppID), currentToken, time.Duration(tokenExpireAt-now)*time.Millisecond)
+		if err != nil {
+			return fmt.Errorf("Redis set token error:  %v", err)
+		}
+		err = RedisSet(fmt.Sprintf("REFRESH_TOKEN:%s", AppConfig.AppID), refreshToken, time.Duration(refreshExpireAt-now)*time.Millisecond)
+		if err != nil {
+			return fmt.Errorf("Redis set refreshToken error:  %v", err)
+		}
+		logger.Log.Info("Token and Refresh Token successfully saved to Redis.")
+	}
 
 	logger.Log.Info("刷新Token与RefreshToken成功:\n" +
 		"----------------------------------------\n" +

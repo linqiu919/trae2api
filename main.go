@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/trae2api/api"
 	"github.com/trae2api/config"
+	"github.com/trae2api/middleware"
 	"github.com/trae2api/pkg/logger"
 	"net/http"
 	"time"
@@ -20,12 +21,21 @@ func main() {
 	// 初始化日志
 	logger.Init()
 
+	// Initialize Redis
+	err := config.InitRedisClient()
+	if err != nil {
+		logger.Log.Fatalln("failed to initialize Redis: " + err.Error())
+	}
+
 	// 初始化配置
 	if err := config.InitConfig(); err != nil {
 		logger.Log.Fatalf("Trae2API Config Init Failed: %v", err)
 	}
 
 	r := gin.Default()
+
+	// 跨域
+	r.Use(middleware.CORS())
 
 	// 加载HTML模板
 	r.LoadHTMLGlob("templates/*")

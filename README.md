@@ -128,6 +128,8 @@ Content-Type: application/json
 - `BASE_URL`: Trae API 基础 URL（默认：https://a0ai-api-sg.byteintlapi.com）
 - `IDE_VERSION`: IDE 版本号（默认：1.0.2）
 - `AUTH_ENABLED`: 是否启用 API 鉴权（默认：true）
+- `REDIS_CONN_STRING`： Redis 连接字符串。示例：`redis://default:<password>@<addr>:<port>`，可用来缓存`REFRESH_TOKEN`
+- `REFRESH_TOKEN_CACHE_ENABLED`: 是否启用`refresh_token`缓存（默认：false）。需配置环境变量`REDIS_CONN_STRING`,配置此项后刷新`refresh_token`时会缓存进`Redis`,容器重启后优先使用`Redis`中的`refresh_token` 
 
 ## 常见问题
 

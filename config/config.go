@@ -20,6 +20,8 @@ type Config struct {
 	AuthToken       string
 }
 
+var RefreshTokenCacheEnabled = getEnv("REFRESH_TOKEN_CACHE_ENABLED", "false")
+
 var AppConfig Config
 
 func InitConfig() error {
@@ -37,6 +39,13 @@ func InitConfig() error {
 		UploadFileURL:   getEnv("UPLOAD_FILE_URL", "https://tos-sg16-share.vodupload.com"),
 		// 非必填配置
 		AuthToken: getEnv("AUTH_TOKEN", ""),
+	}
+
+	// redis连接字符串 示例: redis://default:pwd@localhost:6379
+	if RefreshTokenCacheEnabled == "true" {
+		if RedisConnString == "" {
+			logger.Log.Fatalln("未配置环境变量 REDIS_CONN_STRING")
+		}
 	}
 
 	// 是否为开发调试模式
