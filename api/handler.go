@@ -611,10 +611,8 @@ func CreateChatCompletion(c *gin.Context) {
 				continue
 			}
 			data := strings.TrimPrefix(dataLine, "data: ")
-			fmt.Println(data)
 			switch event {
 			case "output":
-				//fmt.Println(data)
 				var outputData struct {
 					Response         string `json:"response"`
 					ReasoningContent string `json:"reasoning_content"`
