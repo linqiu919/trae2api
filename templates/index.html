@@ -368,7 +368,7 @@
 <body>
 <header>
     <div class="container">
-        <h1>Trae2API-v1.0.5</h1>
+        <h1>Trae2API-v1.0.7</h1>
     </div>
 </header>
 
@@ -382,10 +382,11 @@
 
         <h3>功能特点</h3>
         <ul>
-            <li>支持获取模型列表</li>
-            <li>支持多轮对话</li>
-            <li>支持流式输出</li>
-            <li>支持 Docker 部署</li>
+            <li>获取模型列表</li>
+            <li>多轮对话支持</li>
+            <li>流式/非流式输出</li>
+            <li>思考类模型思考内容展示</li>
+            <li>RefreshToken自动刷新/持久化RefreshToken</li>
         </ul>
 
         <h3>不会支持</h3>
@@ -507,6 +508,26 @@
             </div>
         </div>
 
+        <button class="collapsible">REFRESH_TOKEN_CACHE_ENABLED</button>
+        <div class="content">
+            <div class="env-var">
+                <div class="env-var-desc">
+                    <p>是否开启Redis缓存RefreshToken，开启并配置链接地址后，最新的RefreshToken会被缓存到Redis中，避免误容器重启导致RefreshToken失效</p>
+                    <p>默认值：false</p>
+                </div>
+            </div>
+        </div>
+
+        <button class="collapsible">REDIS_CONN_STRING</button>
+        <div class="content">
+            <div class="env-var">
+                <div class="env-var-desc">
+                    <p>Redis链接地址，和REFRESH_TOKEN_CACHE_ENABLED搭配使用（推荐白嫖upstash免费额度）</p>
+                    <p>格式：redis://:password@redis.example.com:6379</p>
+                </div>
+            </div>
+        </div>
+
         <button class="collapsible">GET_FILE_ID_URL（暂未使用）</button>
         <div class="content">
             <div class="env-var">
@@ -618,7 +639,7 @@ Content-Type: application/json
         <div class="content">
             <div class="env-var">
                 <div class="env-var-desc">
-                    <p>Trae被写入了系统提示词，仅会回复代码类问题。</p>
+                    <p>Trae的Claude3.5被写入了系统提示词，仅会回复代码类问题.可尝试使用claude3.7模型。</p>
                 </div>
             </div>
         </div>

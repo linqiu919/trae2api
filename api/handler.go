@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -318,7 +320,7 @@ func CreateChatCompletion(c *gin.Context) {
 		UseFilepath:    true,
 		CurrentTime:    time.Now().Format("20060102 15:04:05，星期二"),
 		BadgeClickable: true,
-		WorkspacePath:  "/Users/edy/Documents/go_project/wechat-bot-next",
+		WorkspacePath:  generateRandomWorkspacePath(),
 	}
 
 	// 转换历史消息
@@ -734,4 +736,57 @@ func IndexHandler(c *gin.Context) {
 	c.HTML(http.StatusOK, "index.html", gin.H{
 		"title": "Trae2API - 配置指南",
 	})
+}
+
+// generateRandomWorkspacePath 生成随机工作空间路径
+func generateRandomWorkspacePath() string {
+	dirs := []string{"projects", "workspace", "dev", "code", "work"}
+
+	rand.Seed(time.Now().UnixNano())
+
+	// 生成随机用户名（5-8位，字母开头）
+	username := generateRandomUsername(5 + rand.Intn(4))
+
+	// 生成8-12位随机项目名
+	projectName := generateRandomString(8 + rand.Intn(5))
+
+	return filepath.Join(
+		"/Users",
+		username,
+		"Documents",
+		dirs[rand.Intn(len(dirs))],
+		"project-"+projectName,
+	)
+}
+
+// 随机用户名生成函数（字母开头）
+func generateRandomUsername(length int) string {
+	const (
+		letters = "abcdefghijklmnopqrstuvwxyz"
+		charset = letters + "0123456789"
+	)
+
+	if length < 2 {
+		length = 2
+	}
+
+	b := make([]byte, length)
+	// 首字符必须是字母
+	b[0] = letters[rand.Intn(len(letters))]
+
+	// 剩余字符可以是字母或数字
+	for i := 1; i < length; i++ {
+		b[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(b)
+}
+
+// 随机字符串函数
+func generateRandomString(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(b)
 }
