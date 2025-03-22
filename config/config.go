@@ -21,6 +21,7 @@ type Config struct {
 }
 
 var RefreshTokenCacheEnabled = getEnv("REFRESH_TOKEN_CACHE_ENABLED", "false")
+var AutoContinueEnabled = getEnv("AUTO_CONTINUE_ENABLED", "false")
 
 var AppConfig Config
 
@@ -47,6 +48,9 @@ func InitConfig() error {
 			logger.Log.Fatalln("未配置环境变量 REDIS_CONN_STRING")
 		}
 	}
+
+	// 打印是否开启claude3.7自动发起继续对话
+	logger.Log.Info("当前是否开启claude3.7自动继续请求: " + AutoContinueEnabled)
 
 	// 是否为开发调试模式
 	codingMode := os.Getenv("CODING_MODE") == "true"

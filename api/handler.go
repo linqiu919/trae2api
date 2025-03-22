@@ -217,6 +217,62 @@ func generateSessionIDFromMessages(messages []ChatMessage) string {
 	return fmt.Sprintf("session_%x", h.Sum(nil)[:8])
 }
 
+// 生成随机设备类型
+func generateDeviceType() string {
+	types := []string{"windows", "linux", "macos"}
+	return types[rand.Intn(len(types))]
+}
+
+// 获取系统类型
+func getSystemType(deviceType string) string {
+	switch deviceType {
+	case "windows":
+		return "Windows"
+	case "linux":
+		return "Linux"
+	case "macos":
+		return "macOS"
+	default:
+		return "Windows"
+	}
+}
+
+// 在设置请求头的地方修改为:
+func setRequestHeaders(req *http.Request) {
+	// 获取当前设备信息
+	device := config.GetCurrentDevice()
+
+	// 基础请求头
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-app-id", config.AppConfig.AppID)
+	req.Header.Set("x-ide-version", "1.2.1")
+	req.Header.Set("x-ide-version-code", "20250318")
+	req.Header.Set("x-ide-version-type", "stable")
+	req.Header.Set("x-ide-token", config.GetCurrentToken())
+	req.Header.Set("accept", "*/*")
+
+	// 设置设备相关的请求头
+	req.Header.Set("x-device-cpu", device.DeviceCPU)
+	req.Header.Set("x-device-id", device.DeviceID)
+	req.Header.Set("x-machine-id", device.MachineID)
+	req.Header.Set("x-device-brand", device.DeviceBrand)
+	req.Header.Set("x-device-type", device.DeviceType)
+	req.Header.Set("x-os-version", device.OSVersion)
+
+	// 记录设备信息
+	logger.Log.WithFields(logrus.Fields{
+		"deviceCPU":   device.DeviceCPU,
+		"deviceID":    device.DeviceID,
+		"machineID":   device.MachineID,
+		"deviceBrand": device.DeviceBrand,
+		"deviceType":  device.DeviceType,
+		"osVersion":   device.OSVersion,
+		"systemType":  device.SystemType,
+		"useCount":    device.UseCount,
+		"maxUses":     device.MaxUses,
+	}).Info("本次请求使用的设备信息")
+}
+
 func CreateChatCompletion(c *gin.Context) {
 	// 检查 RefreshToken 是否过期
 	if config.IsRefreshTokenExpired() {
@@ -290,11 +346,15 @@ func CreateChatCompletion(c *gin.Context) {
 	// 获取最后一条消息的内容并转换为字符串
 	lastContent := fmt.Sprintf("%v", openAIReq.Messages[len(openAIReq.Messages)-1].Content)
 
+	// 获取随机设备类型
+	deviceType := generateDeviceType()
+
 	// 构建 variables
 	variablesJSON := struct {
 		Language               string `json:"language"`
 		Locale                 string `json:"locale"`
 		Input                  string `json:"input"`
+		VersionCode            string `json:"version_code"`
 		IsInlineChat           bool   `json:"is_inline_chat"`
 		IsCommand              bool   `json:"is_command"`
 		RawInput               string `json:"raw_input"`
@@ -310,10 +370,13 @@ func CreateChatCompletion(c *gin.Context) {
 		CurrentTime            string `json:"current_time"`
 		BadgeClickable         bool   `json:"badge_clickable"`
 		WorkspacePath          string `json:"workspace_path"`
+		Brand                  string `json:"brand"`
+		SystemType             string `json:"system_type"`
 	}{
 		Language:       "",
 		Locale:         "zh-cn",
 		Input:          lastContent,
+		VersionCode:    "20250318",
 		RawInput:       lastContent,
 		IsInlineChat:   false,
 		IsCommand:      false,
@@ -321,6 +384,8 @@ func CreateChatCompletion(c *gin.Context) {
 		CurrentTime:    time.Now().Format("20060102 15:04:05，星期二"),
 		BadgeClickable: true,
 		WorkspacePath:  generateRandomWorkspacePath(),
+		Brand:          "trae",
+		SystemType:     getSystemType(deviceType),
 	}
 
 	// 转换历史消息
@@ -390,10 +455,14 @@ func CreateChatCompletion(c *gin.Context) {
 		return
 	}
 
-	// 记录请求体
+	// 在发送请求前记录完整的请求信息
 	logger.Log.WithFields(logrus.Fields{
-		"request": string(jsonData),
-	}).Debug("发送聊天请求")
+		"url":          fmt.Sprintf("%s/api/ide/v1/chat", config.AppConfig.BaseURL),
+		"requestBody":  string(jsonData),
+		"sessionID":    sessionID,
+		"model":        openAIReq.Model,
+		"messageCount": len(openAIReq.Messages),
+	}).Info("发送聊天请求")
 
 	url := fmt.Sprintf("%s/api/ide/v1/chat", config.AppConfig.BaseURL)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
@@ -404,15 +473,7 @@ func CreateChatCompletion(c *gin.Context) {
 		return
 	}
 
-	// 设置所有必需的请求头
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-app-id", config.AppConfig.AppID)
-	req.Header.Set("x-ide-version", "1.0.10")
-	req.Header.Set("x-ide-version-code", "20250303")
-	req.Header.Set("x-ide-version-type", "stable")
-	req.Header.Set("x-ide-token", config.GetCurrentToken())
-	req.Header.Set("x-session-id", sessionID)
-	req.Header.Set("accept", "*/*")
+	setRequestHeaders(req)
 
 	// 记录请求头
 	headers := make(map[string]string)
@@ -478,6 +539,7 @@ func CreateChatCompletion(c *gin.Context) {
 	if !openAIReq.Stream {
 		// 非流式响应，需要收集所有内容
 		var fullResponse string
+		var lastFinishReason string
 
 		for {
 			line, err := reader.ReadString('\n')
@@ -498,7 +560,6 @@ func CreateChatCompletion(c *gin.Context) {
 
 			if strings.HasPrefix(line, "event: ") {
 				event := strings.TrimPrefix(line, "event: ")
-				// 读取数据行
 				dataLine, err := reader.ReadString('\n')
 				if err != nil {
 					continue
@@ -511,18 +572,43 @@ func CreateChatCompletion(c *gin.Context) {
 
 				switch event {
 				case "output":
+					// 先打印原始数据
+					fmt.Printf("原始数据: %s\n", data)
+					logger.Log.WithFields(logrus.Fields{
+						"rawData": data,
+					}).Info("收到原始数据")
+
 					var outputData struct {
 						Response         string `json:"response"`
 						ReasoningContent string `json:"reasoning_content"`
+						FinishReason     string `json:"finish_reason"`
 					}
-
 					var deltaContent string
-
 					if err := json.Unmarshal([]byte(data), &outputData); err != nil {
+						logger.Log.Errorf("解析输出数据失败: %v, data: %s", err, data)
 						continue
 					}
 
-					// 	thinking start
+					// 打印解析后的完整结构
+					fmt.Printf("解析后数据: %+v\n", outputData)
+
+					if outputData.Response == "" && outputData.ReasoningContent == "" {
+						continue
+					}
+
+					// 记录最后的结束原因
+					if outputData.FinishReason != "" {
+						lastFinishReason = outputData.FinishReason
+						logger.Log.WithFields(logrus.Fields{
+							"finishReason": lastFinishReason,
+							"event":        "finish_reason_update",
+						}).Info("更新结束原因")
+
+						// 直接打印到控制台
+						fmt.Printf("更新结束原因: %s\n", lastFinishReason)
+					}
+
+					// thinking start
 					if outputData.ReasoningContent != "" {
 						if !*thinkStartType {
 							deltaContent = "<think>\n\n" + outputData.ReasoningContent
@@ -545,35 +631,104 @@ func CreateChatCompletion(c *gin.Context) {
 					}
 
 					fullResponse += deltaContent
+
 				case "done":
-					// 构建完整的非流式响应
-					response := map[string]interface{}{
+					var doneData struct {
+						FinishReason string `json:"finish_reason"`
+					}
+
+					if err := json.Unmarshal([]byte(data), &doneData); err != nil {
+						logger.Log.Errorf("解析done事件数据失败: %v, data: %s", err, data)
+					} else if doneData.FinishReason != "" {
+						lastFinishReason = doneData.FinishReason
+						logger.Log.WithFields(logrus.Fields{
+							"finishReason": lastFinishReason,
+							"event":        "done",
+						}).Info("从done事件更新finish_reason")
+					}
+
+					// 添加更多详细信息到日志
+					logger.Log.WithFields(logrus.Fields{
+						"autoContinueEnabled": config.AutoContinueEnabled,
+						"lastFinishReason":    lastFinishReason,
+						"model":               openAIReq.Model,
+						"fullResponse":        len(fullResponse),
+						"event":               "done",
+						"hasFinishReason":     lastFinishReason != "",
+					}).Info("检查流式响应是否需要自动继续")
+
+					// 直接打印到控制台
+					fmt.Printf("完成事件: lastFinishReason=%s, responseLen=%d\n",
+						lastFinishReason,
+						len(fullResponse))
+
+					// 如果启用了自动继续且是因为长度限制而结束
+					if config.AutoContinueEnabled == "true" && lastFinishReason == "length" && openAIReq.Model == "aws_sdk_claude37_sonnet" {
+						logger.Log.Info("流式响应触发自动继续条件，准备发起新请求")
+
+						// 创建继续对话的请求
+						continueMessages := append(openAIReq.Messages, ChatMessage{
+							Role:    "assistant",
+							Content: fullResponse,
+						}, ChatMessage{
+							Role:    "user",
+							Content: "继续",
+						})
+
+						// 记录继续请求的消息数量
+						logger.Log.WithFields(logrus.Fields{
+							"originalMessageCount": len(openAIReq.Messages),
+							"newMessageCount":      len(continueMessages),
+						}).Info("创建流式继续对话的消息列表")
+
+						// 创建新的请求对象
+						continueReq := ChatRequest{
+							Model:       openAIReq.Model,
+							Messages:    continueMessages,
+							Stream:      openAIReq.Stream,
+							Temperature: openAIReq.Temperature,
+						}
+
+						// 将新请求序列化为JSON
+						jsonData, err := json.Marshal(continueReq)
+						if err != nil {
+							logger.Log.Errorf("序列化继续请求失败: %v", err)
+							return
+						}
+
+						// 创建新的请求上下文
+						newContext := &gin.Context{
+							Request: &http.Request{
+								Method: "POST",
+								Header: c.Request.Header.Clone(), // 复制原始请求的header
+								Body:   io.NopCloser(bytes.NewReader(jsonData)),
+							},
+							Writer: c.Writer,
+						}
+
+						// 调用处理函数
+						CreateChatCompletion(newContext)
+						return
+					}
+
+					// 发送完成标记
+					openAIResponse := map[string]interface{}{
 						"id":      fmt.Sprintf("chatcmpl-%d", time.Now().Unix()),
-						"object":  "chat.completion",
+						"object":  "chat.completion.chunk",
 						"created": time.Now().Unix(),
 						"model":   openAIReq.Model,
 						"choices": []map[string]interface{}{
 							{
-								"index": 0,
-								"message": map[string]interface{}{
-									"role":    "assistant",
-									"content": fullResponse,
-								},
-								"finish_reason": "stop",
+								"index":         0,
+								"delta":         map[string]interface{}{},
+								"finish_reason": lastFinishReason,
 							},
 						},
 					}
-					responseJSON, _ := json.Marshal(response)
-					c.Data(http.StatusOK, "application/json", responseJSON)
-					return
-				case "error":
-					var errorData struct {
-						Message string `json:"message"`
-					}
-					if err := json.Unmarshal([]byte(data), &errorData); err != nil {
-						continue
-					}
-					c.JSON(http.StatusInternalServerError, gin.H{"error": errorData.Message})
+					responseJSON, _ := json.Marshal(openAIResponse)
+					c.Writer.Write([]byte("data: " + string(responseJSON) + "\n\n"))
+					c.Writer.Write([]byte("data: [DONE]\n\n"))
+					c.Writer.Flush()
 					return
 				}
 			}
@@ -586,6 +741,9 @@ func CreateChatCompletion(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 	c.Header("Transfer-Encoding", "chunked")
+
+	var lastFinishReason string
+	var fullResponse string
 
 	for {
 		line, err := reader.ReadString('\n')
@@ -613,24 +771,46 @@ func CreateChatCompletion(c *gin.Context) {
 				continue
 			}
 			data := strings.TrimPrefix(dataLine, "data: ")
+
 			switch event {
 			case "output":
+				// 先打印原始数据
+				fmt.Printf("原始数据: %s\n", data)
+				logger.Log.WithFields(logrus.Fields{
+					"rawData": data,
+				}).Info("收到原始数据")
+
 				var outputData struct {
 					Response         string `json:"response"`
 					ReasoningContent string `json:"reasoning_content"`
+					FinishReason     string `json:"finish_reason"`
 				}
-
 				var deltaContent string
-
 				if err := json.Unmarshal([]byte(data), &outputData); err != nil {
+					logger.Log.Errorf("解析输出数据失败: %v, data: %s", err, data)
 					continue
 				}
+
+				// 打印解析后的完整结构
+				fmt.Printf("解析后数据: %+v\n", outputData)
 
 				if outputData.Response == "" && outputData.ReasoningContent == "" {
 					continue
 				}
 
-				// 	thinking start
+				// 记录最后的结束原因
+				if outputData.FinishReason != "" {
+					lastFinishReason = outputData.FinishReason
+					logger.Log.WithFields(logrus.Fields{
+						"finishReason": lastFinishReason,
+						"event":        "finish_reason_update",
+					}).Info("更新结束原因")
+
+					// 直接打印到控制台
+					fmt.Printf("更新结束原因: %s\n", lastFinishReason)
+				}
+
+				// thinking start
 				if outputData.ReasoningContent != "" {
 					if !*thinkStartType {
 						deltaContent = "<think>\n\n" + outputData.ReasoningContent
@@ -651,6 +831,8 @@ func CreateChatCompletion(c *gin.Context) {
 						deltaContent = outputData.Response
 					}
 				}
+
+				fullResponse += deltaContent
 
 				// 转换为 OpenAI 流式格式
 				openAIResponse := map[string]interface{}{
@@ -673,6 +855,85 @@ func CreateChatCompletion(c *gin.Context) {
 				c.Writer.Flush()
 
 			case "done":
+				// 解析 done 事件数据
+				var doneData struct {
+					FinishReason string `json:"finish_reason"`
+				}
+
+				if err := json.Unmarshal([]byte(data), &doneData); err != nil {
+					logger.Log.Errorf("解析done事件数据失败: %v, data: %s", err, data)
+				} else if doneData.FinishReason != "" {
+					lastFinishReason = doneData.FinishReason
+					logger.Log.WithFields(logrus.Fields{
+						"finishReason": lastFinishReason,
+						"event":        "done",
+					}).Info("从done事件更新finish_reason")
+				}
+
+				// 添加更多详细信息到日志
+				logger.Log.WithFields(logrus.Fields{
+					"autoContinueEnabled": config.AutoContinueEnabled,
+					"lastFinishReason":    lastFinishReason,
+					"model":               openAIReq.Model,
+					"fullResponse":        len(fullResponse),
+					"event":               "done",
+					"hasFinishReason":     lastFinishReason != "",
+				}).Info("检查流式响应是否需要自动继续")
+
+				// 直接打印到控制台
+				fmt.Printf("完成事件: lastFinishReason=%s, responseLen=%d\n",
+					lastFinishReason,
+					len(fullResponse))
+
+				// 如果启用了自动继续且是因为长度限制而结束
+				if config.AutoContinueEnabled == "true" && lastFinishReason == "length" && openAIReq.Model == "aws_sdk_claude37_sonnet" {
+					logger.Log.Info("流式响应触发自动继续条件，准备发起新请求")
+
+					// 创建继续对话的请求
+					continueMessages := append(openAIReq.Messages, ChatMessage{
+						Role:    "assistant",
+						Content: fullResponse,
+					}, ChatMessage{
+						Role:    "user",
+						Content: "继续",
+					})
+
+					// 记录继续请求的消息数量
+					logger.Log.WithFields(logrus.Fields{
+						"originalMessageCount": len(openAIReq.Messages),
+						"newMessageCount":      len(continueMessages),
+					}).Info("创建流式继续对话的消息列表")
+
+					// 创建新的请求对象
+					continueReq := ChatRequest{
+						Model:       openAIReq.Model,
+						Messages:    continueMessages,
+						Stream:      openAIReq.Stream,
+						Temperature: openAIReq.Temperature,
+					}
+
+					// 将新请求序列化为JSON
+					jsonData, err := json.Marshal(continueReq)
+					if err != nil {
+						logger.Log.Errorf("序列化继续请求失败: %v", err)
+						return
+					}
+
+					// 创建新的请求上下文
+					newContext := &gin.Context{
+						Request: &http.Request{
+							Method: "POST",
+							Header: c.Request.Header.Clone(), // 复制原始请求的header
+							Body:   io.NopCloser(bytes.NewReader(jsonData)),
+						},
+						Writer: c.Writer,
+					}
+
+					// 调用处理函数
+					CreateChatCompletion(newContext)
+					return
+				}
+
 				// 发送完成标记
 				openAIResponse := map[string]interface{}{
 					"id":      fmt.Sprintf("chatcmpl-%d", time.Now().Unix()),
@@ -683,7 +944,7 @@ func CreateChatCompletion(c *gin.Context) {
 						{
 							"index":         0,
 							"delta":         map[string]interface{}{},
-							"finish_reason": "stop",
+							"finish_reason": lastFinishReason,
 						},
 					},
 				}
@@ -740,6 +1001,16 @@ func IndexHandler(c *gin.Context) {
 
 // generateRandomWorkspacePath 生成随机工作空间路径
 func generateRandomWorkspacePath() string {
+	// 定义可能的根目录列表
+	rootDirs := []string{
+		"/User",
+		"/home",
+		"/workspace",
+		"/data",
+		"/opt",
+		"/var/lib",
+	}
+
 	dirs := []string{"projects", "workspace", "dev", "code", "work"}
 
 	rand.Seed(time.Now().UnixNano())
@@ -751,7 +1022,7 @@ func generateRandomWorkspacePath() string {
 	projectName := generateRandomString(8 + rand.Intn(5))
 
 	return filepath.Join(
-		"/Users",
+		rootDirs[rand.Intn(len(rootDirs))],
 		username,
 		"Documents",
 		dirs[rand.Intn(len(dirs))],
