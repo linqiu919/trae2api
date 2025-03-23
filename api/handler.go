@@ -273,6 +273,28 @@ func setRequestHeaders(req *http.Request) {
 	//}).Info("本次请求使用的设备信息")
 }
 
+// 检查模型是否支持
+func isModelSupported(model string) bool {
+	// 支持的模型列表
+	supportedModels := []string{
+		// Claude 模型
+		"claude-3-5-sonnet-20240620", "claude-3-5-sonnet-20241022", "claude-3-5-sonnet", "claude3.5",
+		"claude-3-7-sonnet-20250219", "claude-3-7-sonnet", "claude-3-7", "aws_sdk_claude37_sonnet",
+		// GPT 模型
+		"gpt-4o-mini", "gpt-4o-mini-2024-07-18", "gpt-4o-latest", "gpt-4o",
+		// Deepseek 模型
+		"deepseek-chat", "deepseek-coder", "deepseek-v3", "deepseek-V3",
+		"deepseek-reasoner", "deepseek-r1", "deepseek-R1",
+	}
+
+	for _, supportedModel := range supportedModels {
+		if model == supportedModel {
+			return true
+		}
+	}
+	return false
+}
+
 func CreateChatCompletion(c *gin.Context) {
 	// 检查 RefreshToken 是否过期
 	if config.IsRefreshTokenExpired() {
@@ -290,6 +312,21 @@ func CreateChatCompletion(c *gin.Context) {
 	if err := c.BindJSON(&openAIReq); err != nil {
 		logger.Log.Errorf("解析请求体失败: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 检查模型是否支持
+	if !isModelSupported(openAIReq.Model) {
+		errMsg := fmt.Sprintf("不支持的模型: %s", openAIReq.Model)
+		logger.Log.Errorf("%s", errMsg)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": map[string]interface{}{
+				"message": errMsg,
+				"type":    "invalid_request_error",
+				"param":   "model",
+				"code":    http.StatusBadRequest,
+			},
+		})
 		return
 	}
 
