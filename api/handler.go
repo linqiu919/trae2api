@@ -260,17 +260,17 @@ func setRequestHeaders(req *http.Request) {
 	req.Header.Set("x-os-version", device.OSVersion)
 
 	// 记录设备信息
-	logger.Log.WithFields(logrus.Fields{
-		"deviceCPU":   device.DeviceCPU,
-		"deviceID":    device.DeviceID,
-		"machineID":   device.MachineID,
-		"deviceBrand": device.DeviceBrand,
-		"deviceType":  device.DeviceType,
-		"osVersion":   device.OSVersion,
-		"systemType":  device.SystemType,
-		"useCount":    device.UseCount,
-		"maxUses":     device.MaxUses,
-	}).Info("本次请求使用的设备信息")
+	//logger.Log.WithFields(logrus.Fields{
+	//	"deviceCPU":   device.DeviceCPU,
+	//	"deviceID":    device.DeviceID,
+	//	"machineID":   device.MachineID,
+	//	"deviceBrand": device.DeviceBrand,
+	//	"deviceType":  device.DeviceType,
+	//	"osVersion":   device.OSVersion,
+	//	"systemType":  device.SystemType,
+	//	"useCount":    device.UseCount,
+	//	"maxUses":     device.MaxUses,
+	//}).Info("本次请求使用的设备信息")
 }
 
 func CreateChatCompletion(c *gin.Context) {
@@ -456,13 +456,13 @@ func CreateChatCompletion(c *gin.Context) {
 	}
 
 	// 在发送请求前记录完整的请求信息
-	logger.Log.WithFields(logrus.Fields{
-		"url":          fmt.Sprintf("%s/api/ide/v1/chat", config.AppConfig.BaseURL),
-		"requestBody":  string(jsonData),
-		"sessionID":    sessionID,
-		"model":        openAIReq.Model,
-		"messageCount": len(openAIReq.Messages),
-	}).Info("发送聊天请求")
+	//logger.Log.WithFields(logrus.Fields{
+	//	"url":          fmt.Sprintf("%s/api/ide/v1/chat", config.AppConfig.BaseURL),
+	//	"requestBody":  string(jsonData),
+	//	"sessionID":    sessionID,
+	//	"model":        openAIReq.Model,
+	//	"messageCount": len(openAIReq.Messages),
+	//}).Info("发送聊天请求")
 
 	url := fmt.Sprintf("%s/api/ide/v1/chat", config.AppConfig.BaseURL)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
@@ -572,11 +572,11 @@ func CreateChatCompletion(c *gin.Context) {
 
 				switch event {
 				case "output":
-					// 先打印原始数据
-					fmt.Printf("原始数据: %s\n", data)
-					logger.Log.WithFields(logrus.Fields{
-						"rawData": data,
-					}).Info("收到原始数据")
+					// 打印原始数据
+					//fmt.Printf("原始数据: %s\n", data)
+					//logger.Log.WithFields(logrus.Fields{
+					//	"rawData": data,
+					//}).Info("收到原始数据")
 
 					var outputData struct {
 						Response         string `json:"response"`
@@ -590,7 +590,7 @@ func CreateChatCompletion(c *gin.Context) {
 					}
 
 					// 打印解析后的完整结构
-					fmt.Printf("解析后数据: %+v\n", outputData)
+					//fmt.Printf("解析后数据: %+v\n", outputData)
 
 					if outputData.Response == "" && outputData.ReasoningContent == "" {
 						continue
@@ -647,7 +647,7 @@ func CreateChatCompletion(c *gin.Context) {
 						}).Info("从done事件更新finish_reason")
 					}
 
-					// 添加更多详细信息到日志
+					// 检查流式响应是否需要自动继续
 					logger.Log.WithFields(logrus.Fields{
 						"autoContinueEnabled": config.AutoContinueEnabled,
 						"lastFinishReason":    lastFinishReason,
@@ -681,13 +681,9 @@ func CreateChatCompletion(c *gin.Context) {
 							"newMessageCount":      len(continueMessages),
 						}).Info("创建流式继续对话的消息列表")
 
-						// 创建新的请求对象
-						continueReq := ChatRequest{
-							Model:       openAIReq.Model,
-							Messages:    continueMessages,
-							Stream:      openAIReq.Stream,
-							Temperature: openAIReq.Temperature,
-						}
+						// 创建新请求对象，复制原始请求的所有字段
+						continueReq := openAIReq                // 复制整个原始请求
+						continueReq.Messages = continueMessages // 只更新消息列表
 
 						// 将新请求序列化为JSON
 						jsonData, err := json.Marshal(continueReq)
@@ -696,7 +692,7 @@ func CreateChatCompletion(c *gin.Context) {
 							return
 						}
 
-						// 创建新的请求上下文
+						// 创建新请求上下文
 						newContext := &gin.Context{
 							Request: &http.Request{
 								Method: "POST",
@@ -774,11 +770,11 @@ func CreateChatCompletion(c *gin.Context) {
 
 			switch event {
 			case "output":
-				// 先打印原始数据
-				fmt.Printf("原始数据: %s\n", data)
-				logger.Log.WithFields(logrus.Fields{
-					"rawData": data,
-				}).Info("收到原始数据")
+				// 打印原始数据
+				//fmt.Printf("原始数据: %s\n", data)
+				//logger.Log.WithFields(logrus.Fields{
+				//	"rawData": data,
+				//}).Info("收到原始数据")
 
 				var outputData struct {
 					Response         string `json:"response"`
@@ -792,22 +788,10 @@ func CreateChatCompletion(c *gin.Context) {
 				}
 
 				// 打印解析后的完整结构
-				fmt.Printf("解析后数据: %+v\n", outputData)
+				//fmt.Printf("解析后数据: %+v\n", outputData)
 
 				if outputData.Response == "" && outputData.ReasoningContent == "" {
 					continue
-				}
-
-				// 记录最后的结束原因
-				if outputData.FinishReason != "" {
-					lastFinishReason = outputData.FinishReason
-					logger.Log.WithFields(logrus.Fields{
-						"finishReason": lastFinishReason,
-						"event":        "finish_reason_update",
-					}).Info("更新结束原因")
-
-					// 直接打印到控制台
-					fmt.Printf("更新结束原因: %s\n", lastFinishReason)
 				}
 
 				// thinking start
@@ -904,13 +888,9 @@ func CreateChatCompletion(c *gin.Context) {
 						"newMessageCount":      len(continueMessages),
 					}).Info("创建流式继续对话的消息列表")
 
-					// 创建新的请求对象
-					continueReq := ChatRequest{
-						Model:       openAIReq.Model,
-						Messages:    continueMessages,
-						Stream:      openAIReq.Stream,
-						Temperature: openAIReq.Temperature,
-					}
+					// 创建新请求对象，复制原始请求的所有字段
+					continueReq := openAIReq                // 复制整个原始请求
+					continueReq.Messages = continueMessages // 只更新消息列表
 
 					// 将新请求序列化为JSON
 					jsonData, err := json.Marshal(continueReq)
@@ -956,47 +936,6 @@ func CreateChatCompletion(c *gin.Context) {
 			}
 		}
 	}
-}
-
-// LoginPageHandler 处理登录页面请求
-func LoginPageHandler(c *gin.Context) {
-	c.HTML(http.StatusOK, "login.html", gin.H{
-		"error": "",
-	})
-}
-
-// VerifyPasswordHandler 处理密码验证
-func VerifyPasswordHandler(c *gin.Context) {
-	password := c.PostForm("password")
-
-	// 固定密码为 linuxdo
-	if password == "linuxdo" {
-		// 设置 Cookie 标记已验证
-		c.SetCookie("authenticated", "true", 3600*24, "/", "", false, true)
-
-		// 重定向到首页
-		c.Redirect(http.StatusFound, "/index")
-	} else {
-		// 密码错误，显示错误信息
-		c.HTML(http.StatusUnauthorized, "login.html", gin.H{
-			"error": "密码错误，请重试",
-		})
-	}
-}
-
-// IndexHandler 登录验证检查
-func IndexHandler(c *gin.Context) {
-	// 检查 Cookie 是否已验证
-	authenticated, _ := c.Cookie("authenticated")
-	if authenticated != "true" {
-		c.Redirect(http.StatusFound, "/login")
-		return
-	}
-
-	// 已验证，显示正常页面
-	c.HTML(http.StatusOK, "index.html", gin.H{
-		"title": "Trae2API - 配置指南",
-	})
 }
 
 // generateRandomWorkspacePath 生成随机工作空间路径

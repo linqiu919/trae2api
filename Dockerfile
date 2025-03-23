@@ -31,9 +31,6 @@ WORKDIR /app
 # 从构建阶段复制二进制文件
 COPY --from=builder /app/main .
 
-# 创建templates目录并复制模板文件
-COPY --from=builder /app/templates /app/templates
-
 # 设置环境变量
 ENV APP_ID=""
 ENV IDE_TOKEN=""

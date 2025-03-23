@@ -6,7 +6,6 @@ import (
 	"github.com/trae2api/config"
 	"github.com/trae2api/middleware"
 	"github.com/trae2api/pkg/logger"
-	"net/http"
 	"time"
 )
 
@@ -37,30 +36,10 @@ func main() {
 	// 跨域
 	r.Use(middleware.CORS())
 
-	// 加载HTML模板
-	r.LoadHTMLGlob("templates/*")
-
-	// 添加鉴权中间件，但排除 /index、/login 和 /verify 路径
+	// 添加鉴权中间件
 	r.Use(func(c *gin.Context) {
-		path := c.Request.URL.Path
-		if path == "/index" || path == "/login" || path == "/verify" {
-			c.Next()
-			return
-		}
 		api.AuthMiddleware()(c)
 	})
-
-	// 添加根路径重定向到登录页面
-	r.GET("/", func(c *gin.Context) {
-		c.Redirect(http.StatusFound, "/login")
-	})
-
-	// 添加登录相关路由
-	r.GET("/login", api.LoginPageHandler)
-	r.POST("/verify", api.VerifyPasswordHandler)
-
-	// 添加索引页面路由
-	r.GET("/index", api.IndexHandler)
 
 	// OpenAI 格式的 API 路由
 	r.GET("/v1/models", api.GetModels)
