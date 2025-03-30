@@ -113,8 +113,8 @@ func GetModels(c *gin.Context) {
 	// 设置请求头
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-app-id", config.AppConfig.AppID)
-	req.Header.Set("x-ide-version", "1.0.10")
-	req.Header.Set("x-ide-version-code", "20250303")
+	req.Header.Set("x-ide-version", "1.2.4")
+	req.Header.Set("x-ide-version-code", "20250325")
 	req.Header.Set("x-ide-version-type", "stable")
 	req.Header.Set("x-ide-token", config.GetCurrentToken())
 	req.Header.Set("accept", "*/*")
@@ -195,6 +195,8 @@ func convertModelName(model string) string {
 		return "deepseek-V3"
 	case "deepseek-reasoner", "deepseek-r1":
 		return "deepseek-R1"
+	case "deepseek-chat-0324", "deepseek-V3-0324":
+		return "deepseek-V3-0324"
 	default:
 		return model
 	}
@@ -245,8 +247,8 @@ func setRequestHeaders(req *http.Request) {
 	// 基础请求头
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-app-id", config.AppConfig.AppID)
-	req.Header.Set("x-ide-version", "1.2.1")
-	req.Header.Set("x-ide-version-code", "20250318")
+	req.Header.Set("x-ide-version", "1.2.4")
+	req.Header.Set("x-ide-version-code", "20250325")
 	req.Header.Set("x-ide-version-type", "stable")
 	req.Header.Set("x-ide-token", config.GetCurrentToken())
 	req.Header.Set("accept", "*/*")
@@ -283,8 +285,8 @@ func isModelSupported(model string) bool {
 		// GPT 模型
 		"gpt-4o-mini", "gpt-4o-mini-2024-07-18", "gpt-4o-latest", "gpt-4o",
 		// Deepseek 模型
-		"deepseek-chat", "deepseek-coder", "deepseek-v3", "deepseek-V3",
-		"deepseek-reasoner", "deepseek-r1", "deepseek-R1",
+		"deepseek-chat", "deepseek-coder", "deepseek-v3", "deepseek-V3", "deepseek-V3-0324",
+		"deepseek-reasoner", "deepseek-r1", "deepseek-R1", "deepseek-chat-0324",
 	}
 
 	for _, supportedModel := range supportedModels {
@@ -413,7 +415,7 @@ func CreateChatCompletion(c *gin.Context) {
 		Language:       "",
 		Locale:         "zh-cn",
 		Input:          lastContent,
-		VersionCode:    "20250318",
+		VersionCode:    "20250325",
 		RawInput:       lastContent,
 		IsInlineChat:   false,
 		IsCommand:      false,
