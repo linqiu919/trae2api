@@ -34,12 +34,6 @@ COPY --from=builder /app/main .
 # 创建templates目录并复制模板文件
 COPY --from=builder /app/templates /app/templates
 
-# 设置环境变量
-ENV APP_ID=""
-ENV IDE_TOKEN=""
-ENV BASE_URL="https://a0ai-api-sg.byteintlapi.com"
-ENV AUTH_TOKEN=""
-
 # 暴露端口
 EXPOSE 17080
 
