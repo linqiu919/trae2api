@@ -31,12 +31,6 @@ WORKDIR /app
 # 从构建阶段复制二进制文件
 COPY --from=builder /app/main .
 
-# 设置环境变量
-ENV APP_ID=""
-ENV IDE_TOKEN=""
-ENV BASE_URL="https://a0ai-api-sg.byteintlapi.com"
-ENV AUTH_TOKEN=""
-
 # 暴露端口
 EXPOSE 17080
 

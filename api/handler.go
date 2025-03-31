@@ -1,23 +1,28 @@
 package api
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
+	"github.com/trae2api/config"
+	"github.com/trae2api/pkg/logger"
 	"io"
 	"math/rand"
 	"net/http"
 	"path/filepath"
 	"strings"
 	"time"
+)
 
-	"bufio"
-
-	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
-	"github.com/trae2api/config"
-	"github.com/trae2api/pkg/logger"
+const (
+	// IdeVersion IDE 版本
+	IdeVersion = "1.2.4"
+	// IdeVersionCde IDE 版本代码
+	IdeVersionCde = "20250325"
 )
 
 type ModelResponse struct {
@@ -113,8 +118,8 @@ func GetModels(c *gin.Context) {
 	// 设置请求头
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-app-id", config.AppConfig.AppID)
-	req.Header.Set("x-ide-version", "1.2.4")
-	req.Header.Set("x-ide-version-code", "20250325")
+	req.Header.Set("x-ide-version", IdeVersion)
+	req.Header.Set("x-ide-version-code", IdeVersionCde)
 	req.Header.Set("x-ide-version-type", "stable")
 	req.Header.Set("x-ide-token", config.GetCurrentToken())
 	req.Header.Set("accept", "*/*")
@@ -247,8 +252,8 @@ func setRequestHeaders(req *http.Request) {
 	// 基础请求头
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-app-id", config.AppConfig.AppID)
-	req.Header.Set("x-ide-version", "1.2.4")
-	req.Header.Set("x-ide-version-code", "20250325")
+	req.Header.Set("x-ide-version", IdeVersion)
+	req.Header.Set("x-ide-version-code", IdeVersionCde)
 	req.Header.Set("x-ide-version-type", "stable")
 	req.Header.Set("x-ide-token", config.GetCurrentToken())
 	req.Header.Set("accept", "*/*")
@@ -991,7 +996,7 @@ func generateRandomWorkspacePath() string {
 
 	dirs := []string{"projects", "workspace", "dev", "code", "work"}
 
-	rand.Seed(time.Now().UnixNano())
+	rand.Int63()
 
 	// 生成随机用户名（5-8位，字母开头）
 	username := generateRandomUsername(5 + rand.Intn(4))
