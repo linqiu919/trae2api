@@ -6,23 +6,29 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
-	"github.com/trae2api/config"
-	"github.com/trae2api/pkg/logger"
 	"io"
 	"math/rand"
 	"net/http"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
+	"github.com/trae2api/config"
+	customhttp "github.com/trae2api/pkg/http"
+	"github.com/trae2api/pkg/logger"
 )
 
 const (
 	// IdeVersion IDE 版本
-	IdeVersion = "1.2.4"
+	IdeVersion = "1.2.10"
 	// IdeVersionCde IDE 版本代码
 	IdeVersionCde = "20250325"
+	// IdeVersionCdeNum IDE 版本代码编号
+	IdeVersionCdeNum = 20250325
 )
 
 type ModelResponse struct {
@@ -73,6 +79,8 @@ type TraeRequest struct {
 	MultiMedia                 []interface{}        `json:"multi_media"`
 	ModelName                  string               `json:"model_name"`
 	LastLLMResponseInfo        *LastLLMResponseInfo `json:"last_llm_response_info,omitempty"`
+	IsPreset                   bool                 `json:"is_preset"`
+	Provider                   string               `json:"provider"`
 }
 
 type ChatHistory struct {
@@ -93,6 +101,10 @@ type TraeModelResponse struct {
 	} `json:"model_configs"`
 }
 
+// 存储当前会话ID的map，键为原始消息的哈希，值为生成的UUID
+var sessionIDCache = make(map[string]string)
+var sessionIDMutex sync.RWMutex
+
 func GetModels(c *gin.Context) {
 	// 检查 RefreshToken 是否过期
 	if config.IsRefreshTokenExpired() {
@@ -106,23 +118,20 @@ func GetModels(c *gin.Context) {
 		return
 	}
 
-	client := &http.Client{}
+	// 使用HTTP/1.1客户端
+	client := customhttp.NewHTTP11Client()
+
 	url := fmt.Sprintf("%s/api/ide/v1/model_list?type=chat", config.AppConfig.BaseURL)
 
-	req, err := http.NewRequest("GET", url, nil)
+	// 创建HTTP/1.1请求
+	req, err := customhttp.NewHTTP11Request("GET", url, nil)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// 设置请求头
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-app-id", config.AppConfig.AppID)
-	req.Header.Set("x-ide-version", IdeVersion)
-	req.Header.Set("x-ide-version-code", IdeVersionCde)
-	req.Header.Set("x-ide-version-type", "stable")
-	req.Header.Set("x-ide-token", config.GetCurrentToken())
-	req.Header.Set("accept", "*/*")
+	// 使用公共函数设置请求头
+	setRequestHeaders(req)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -196,88 +205,121 @@ func convertModelName(model string) string {
 		return "aws_sdk_claude37_sonnet"
 	case "gpt-4o-mini,gpt-4o-mini-2024-07-18", "gpt-4o-latest":
 		return "gpt-4o"
+	case "gpt-4-1", "gpt-4.1", "gpt-4.1-2025-04-14":
+		return "gpt-4.1-2025-04-14"
 	case "deepseek-chat", "deepseek-coder", "deepseek-v3":
 		return "deepseek-V3"
 	case "deepseek-reasoner", "deepseek-r1":
 		return "deepseek-R1"
 	case "deepseek-chat-0324", "deepseek-V3-0324":
 		return "deepseek-V3-0324"
+	case "gemini-2.5-pro-preview-03-25", "gemini-2.5-pro":
+		return "gemini-2.5-pro-preview-03-25"
 	default:
 		return model
 	}
 }
 
+// 生成UUID v4格式的ID
+func generateUUID() string {
+	// 使用google/uuid库生成UUID v4
+	return uuid.New().String()
+}
+
 // 使用整个对话历史生成会话ID
 func generateSessionIDFromMessages(messages []ChatMessage) string {
-	// 将所有消息连接成一个字符串
+	// 计算消息内容的哈希作为缓存的键
 	var conversationKey strings.Builder
-	for _, msg := range messages[:1] { // 只使用第一轮对话来生成sessionID
+	for _, msg := range messages[:1] { // 只使用第一轮对话来生成缓存键
 		conversationKey.WriteString(msg.Role)
 		conversationKey.WriteString(": ")
 		conversationKey.WriteString(fmt.Sprintf("%v", msg.Content))
 		conversationKey.WriteString("\n")
 	}
 
-	// 计算hash
+	// 计算哈希值作为缓存键
 	h := sha256.New()
 	h.Write([]byte(conversationKey.String()))
-	return fmt.Sprintf("session_%x", h.Sum(nil)[:8])
-}
+	cacheKey := fmt.Sprintf("%x", h.Sum(nil))
 
-// 生成随机设备类型
-func generateDeviceType() string {
-	types := []string{"windows", "linux", "macos"}
-	return types[rand.Intn(len(types))]
-}
+	// 检查是否已经为这个对话生成过ID
+	sessionIDMutex.RLock()
+	id, exists := sessionIDCache[cacheKey]
+	sessionIDMutex.RUnlock()
 
-// 获取系统类型
-func getSystemType(deviceType string) string {
-	switch deviceType {
-	case "windows":
-		return "Windows"
-	case "linux":
-		return "Linux"
-	case "macos":
-		return "macOS"
-	default:
-		return "Windows"
+	if exists {
+		return id
 	}
+
+	// 生成新UUID并缓存
+	id = generateUUID()
+	sessionIDMutex.Lock()
+	sessionIDCache[cacheKey] = id
+	sessionIDMutex.Unlock()
+
+	return id
+}
+
+// extractHostFromURL 从URL中提取Host部分
+func extractHostFromURL(url string) string {
+	// 去除协议前缀(http://, https://)和结尾的斜杠
+	hostStart := 0
+	if strings.HasPrefix(url, "http://") {
+		hostStart = 7
+	} else if strings.HasPrefix(url, "https://") {
+		hostStart = 8
+	}
+
+	host := url[hostStart:]
+	// 移除可能存在的尾部斜杠
+	if strings.HasSuffix(host, "/") {
+		host = host[:len(host)-1]
+	}
+
+	// 如果存在路径，只保留域名部分
+	if slashIndex := strings.Index(host, "/"); slashIndex != -1 {
+		host = host[:slashIndex]
+	}
+
+	return host
 }
 
 // 在设置请求头的地方修改为:
 func setRequestHeaders(req *http.Request) {
-	// 获取当前设备信息
+	// 获取固定设备信息
 	device := config.GetCurrentDevice()
 
-	// 基础请求头
+	// 根据官方CURL示例，按照完全相同的顺序设置请求头
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-app-id", config.AppConfig.AppID)
 	req.Header.Set("x-ide-version", IdeVersion)
 	req.Header.Set("x-ide-version-code", IdeVersionCde)
 	req.Header.Set("x-ide-version-type", "stable")
-	req.Header.Set("x-ide-token", config.GetCurrentToken())
-	req.Header.Set("accept", "*/*")
-
-	// 设置设备相关的请求头
 	req.Header.Set("x-device-cpu", device.DeviceCPU)
 	req.Header.Set("x-device-id", device.DeviceID)
 	req.Header.Set("x-machine-id", device.MachineID)
 	req.Header.Set("x-device-brand", device.DeviceBrand)
 	req.Header.Set("x-device-type", device.DeviceType)
-	req.Header.Set("x-os-version", device.OSVersion)
+	req.Header.Set("x-ide-token", config.GetCurrentToken())
+	req.Header.Set("accept", "*/*")
+	req.Header.Set("Connection", "keep-alive")
+	req.Header.Set("User-Agent", "Trae")
+
+	// 提取并设置Host请求头
+	host := extractHostFromURL(config.AppConfig.BaseURL)
+	req.Host = host
 
 	// 记录设备信息
-	//logger.Log.WithFields(logrus.Fields{
-	//	"deviceCPU":   device.DeviceCPU,
-	//	"deviceID":    device.DeviceID,
-	//	"machineID":   device.MachineID,
-	//	"deviceBrand": device.DeviceBrand,
-	//	"deviceType":  device.DeviceType,
-	//	"osVersion":   device.OSVersion,
-	//	"systemType":  device.SystemType,
-	//	"useCount":    device.UseCount,
-	//	"maxUses":     device.MaxUses,
-	//}).Info("本次请求使用的设备信息")
+	logger.Log.WithFields(logrus.Fields{
+		"deviceCPU":   device.DeviceCPU,
+		"deviceID":    device.DeviceID,
+		"machineID":   device.MachineID,
+		"deviceBrand": device.DeviceBrand,
+		"deviceType":  device.DeviceType,
+		"osVersion":   device.OSVersion,
+		"systemType":  device.SystemType,
+		"token":       req.Header.Get("x-ide-token"),
+	}).Info("本次请求使用的设备信息")
 }
 
 // 检查模型是否支持
@@ -288,10 +330,12 @@ func isModelSupported(model string) bool {
 		"claude-3-5-sonnet-20240620", "claude-3-5-sonnet-20241022", "claude-3-5-sonnet", "claude3.5",
 		"claude-3-7-sonnet-20250219", "claude-3-7-sonnet", "claude-3-7", "aws_sdk_claude37_sonnet",
 		// GPT 模型
-		"gpt-4o-mini", "gpt-4o-mini-2024-07-18", "gpt-4o-latest", "gpt-4o",
+		"gpt-4o-mini", "gpt-4o-mini-2024-07-18", "gpt-4o-latest", "gpt-4o", "gpt-4.1-2025-04-14", "gpt-4.1",
 		// Deepseek 模型
 		"deepseek-chat", "deepseek-coder", "deepseek-v3", "deepseek-V3", "deepseek-V3-0324",
 		"deepseek-reasoner", "deepseek-r1", "deepseek-R1", "deepseek-chat-0324",
+		// gemini 模型
+		"gemini-2.5-pro-preview-03-25", "gemini-2.5-pro",
 	}
 
 	for _, supportedModel := range supportedModels {
@@ -390,15 +434,12 @@ func CreateChatCompletion(c *gin.Context) {
 	// 获取最后一条消息的内容并转换为字符串
 	lastContent := fmt.Sprintf("%v", openAIReq.Messages[len(openAIReq.Messages)-1].Content)
 
-	// 获取随机设备类型
-	deviceType := generateDeviceType()
-
 	// 构建 variables
 	variablesJSON := struct {
 		Language               string `json:"language"`
 		Locale                 string `json:"locale"`
 		Input                  string `json:"input"`
-		VersionCode            string `json:"version_code"`
+		VersionCode            int    `json:"version_code"`
 		IsInlineChat           bool   `json:"is_inline_chat"`
 		IsCommand              bool   `json:"is_command"`
 		RawInput               string `json:"raw_input"`
@@ -420,7 +461,7 @@ func CreateChatCompletion(c *gin.Context) {
 		Language:       "",
 		Locale:         "zh-cn",
 		Input:          lastContent,
-		VersionCode:    "20250325",
+		VersionCode:    IdeVersionCdeNum,
 		RawInput:       lastContent,
 		IsInlineChat:   false,
 		IsCommand:      false,
@@ -428,8 +469,8 @@ func CreateChatCompletion(c *gin.Context) {
 		CurrentTime:    time.Now().Format("20060102 15:04:05，星期二"),
 		BadgeClickable: true,
 		WorkspacePath:  generateRandomWorkspacePath(),
-		Brand:          "trae",
-		SystemType:     getSystemType(deviceType),
+		Brand:          "Trae",
+		SystemType:     "Windows",
 	}
 
 	// 转换历史消息
@@ -489,6 +530,8 @@ func CreateChatCompletion(c *gin.Context) {
 		MultiMedia:                 []interface{}{},
 		ModelName:                  openAIReq.Model,
 		LastLLMResponseInfo:        lastLLMResponseInfo,
+		IsPreset:                   true,
+		Provider:                   "",
 	}
 
 	jsonData, err := json.Marshal(traeReq)
@@ -499,17 +542,9 @@ func CreateChatCompletion(c *gin.Context) {
 		return
 	}
 
-	// 在发送请求前记录完整的请求信息
-	//logger.Log.WithFields(logrus.Fields{
-	//	"url":          fmt.Sprintf("%s/api/ide/v1/chat", config.AppConfig.BaseURL),
-	//	"requestBody":  string(jsonData),
-	//	"sessionID":    sessionID,
-	//	"model":        openAIReq.Model,
-	//	"messageCount": len(openAIReq.Messages),
-	//}).Info("发送聊天请求")
-
 	url := fmt.Sprintf("%s/api/ide/v1/chat", config.AppConfig.BaseURL)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	// 创建HTTP/1.1请求
+	req, err := customhttp.NewHTTP11Request("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		errMsg := fmt.Sprintf("请求失败: %v", err)
 		fmt.Printf("Error: %s\n", errMsg)
@@ -524,11 +559,25 @@ func CreateChatCompletion(c *gin.Context) {
 	for k, v := range req.Header {
 		headers[k] = v[0]
 	}
+
+	// 在发送请求前记录完整的请求信息
+	logger.Log.WithFields(logrus.Fields{
+		"url":          url,
+		"requestBody":  string(jsonData),
+		"sessionID":    sessionID,
+		"model":        openAIReq.Model,
+		"messageCount": len(openAIReq.Messages),
+		"proto":        req.Proto,
+		"headers":      headers,
+	}).Info("发送聊天请求")
+
 	logger.Log.WithFields(logrus.Fields{
 		"headers": headers,
 	}).Debug("请求头信息")
 
-	client := &http.Client{}
+	// 使用HTTP/1.1客户端
+	client := customhttp.NewHTTP11Client()
+
 	resp, err := client.Do(req)
 	if err != nil {
 		errMsg := fmt.Sprintf("请求远端失败: %v", err)
@@ -543,6 +592,19 @@ func CreateChatCompletion(c *gin.Context) {
 		return
 	}
 	defer resp.Body.Close()
+
+	// 记录响应状态码和头部
+	respHeaders := make(map[string]string)
+	for k, v := range resp.Header {
+		if len(v) > 0 {
+			respHeaders[k] = v[0]
+		}
+	}
+	logger.Log.WithFields(logrus.Fields{
+		"statusCode":    resp.StatusCode,
+		"responseProto": resp.Proto,
+		"headers":       respHeaders,
+	}).Info("收到响应")
 
 	// 检查响应状态码并直接返回对应的错误
 	if resp.StatusCode != http.StatusOK {
@@ -990,8 +1052,6 @@ func generateRandomWorkspacePath() string {
 		"/home",
 		"/workspace",
 		"/data",
-		"/opt",
-		"/var/lib",
 	}
 
 	dirs := []string{"projects", "workspace", "dev", "code", "work"}
@@ -999,10 +1059,10 @@ func generateRandomWorkspacePath() string {
 	rand.Int63()
 
 	// 生成随机用户名（5-8位，字母开头）
-	username := generateRandomUsername(5 + rand.Intn(4))
+	username := generateRandomUsername(4 + rand.Intn(4))
 
 	// 生成8-12位随机项目名
-	projectName := generateRandomString(8 + rand.Intn(5))
+	projectName := generateRandomString(6 + rand.Intn(5))
 
 	return filepath.Join(
 		rootDirs[rand.Intn(len(rootDirs))],

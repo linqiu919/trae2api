@@ -1,12 +1,13 @@
 package main
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/trae2api/api"
 	"github.com/trae2api/config"
 	"github.com/trae2api/middleware"
 	"github.com/trae2api/pkg/logger"
-	"time"
 )
 
 func main() {
