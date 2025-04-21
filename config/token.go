@@ -3,13 +3,16 @@ package config
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/trae2api/pkg/logger"
+	"github.com/go-redis/redis/v8"
 	"io"
 	"net/http"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/trae2api/pkg/logger"
 )
 
 type TokenConfig struct {
@@ -36,13 +39,19 @@ var (
 	refreshToken    string
 )
 
-func RefreshIDEToken() error {
+func RefreshIDEToken(baseURL string, codingMode bool, codingToken string) error {
 	tokenMutex.Lock()
 	defer tokenMutex.Unlock()
 
+	if codingMode {
+		logger.Log.Info("当前为Coding模式，将使用环境变量预设的Trea Token！")
+		currentToken = codingToken
+		return nil
+	}
+
 	now := time.Now().Unix() * 1000
 
-	// 如果已经有了 refreshExpireAt，先检查 RefreshToken 是否过期
+	// 判断 RefreshToken 是否过期
 	if refreshExpireAt > 0 && now >= refreshExpireAt {
 		logger.Log.Error("RefreshToken 已过期，请更新环境变量中的 REFRESH_TOKEN\n" +
 			"----------------------------------------\n" +
@@ -60,7 +69,19 @@ func RefreshIDEToken() error {
 	// 使用内存中的refreshToken（如果存在），否则使用环境变量中的refreshToken
 	currentRefreshToken := refreshToken
 	if currentRefreshToken == "" {
-		currentRefreshToken = os.Getenv("REFRESH_TOKEN")
+		// 使用redis中的refreshToken
+		if RefreshTokenCacheEnabled == "true" {
+			refreshTokenStr, err := RedisGet(fmt.Sprintf("REFRESH_TOKEN:%s", AppConfig.AppID))
+			if errors.Is(err, redis.Nil) || refreshTokenStr == "" {
+				currentRefreshToken = os.Getenv("REFRESH_TOKEN")
+			} else if err != nil {
+				logger.Log.Errorf("Redis get refreshToken error:  %v", err)
+			} else {
+				currentRefreshToken = refreshTokenStr
+			}
+		} else {
+			currentRefreshToken = os.Getenv("REFRESH_TOKEN")
+		}
 	}
 
 	// 请求新的 Refresh Token
@@ -78,12 +99,12 @@ func RefreshIDEToken() error {
 
 	logger.Log.Info("开始执行RefreshToken获取......")
 
-	resp, err := http.Post(
-		"https://api-sg-central.trae.ai/cloudide/api/v3/trae/oauth/ExchangeToken",
+	resp, err := http.Post(baseURL+"/cloudide/api/v3/trae/oauth/ExchangeToken",
 		"application/json",
 		bytes.NewBuffer(jsonData),
 	)
 	if err != nil {
+		logger.Log.Error("请求RefreshToken刷新失败: " + err.Error())
 		return fmt.Errorf("refresh token request failed: %v", err)
 	}
 	defer resp.Body.Close()
@@ -100,14 +121,14 @@ func RefreshIDEToken() error {
 
 	var refreshResp TokenResponse
 	if err := json.NewDecoder(bytes.NewReader(respBody)).Decode(&refreshResp); err != nil {
+		logger.Log.Error("解析 RefreshToken 响应失败: " + err.Error())
 		return fmt.Errorf("decode refresh response failed: %v", err)
 	}
 
-	// 保存新的refreshToken到内存中
+	// 将新的refreshToken保存到内存中
 	refreshToken = refreshResp.Result.RefreshToken
 
-	logger.Log.Info("获取到新的 RefreshToken:\n" +
-		"RefreshToken: " + refreshToken + "\n")
+	logger.Log.Info("获取到新的 RefreshToken: " + refreshToken + "\n")
 
 	// 使用新的 RefreshToken 刷新 Token
 	tokenConfig := TokenConfig{
@@ -124,8 +145,7 @@ func RefreshIDEToken() error {
 
 	logger.Log.Info("开始执行Token获取......")
 
-	resp, err = http.Post(
-		"https://api-sg-central.trae.ai/cloudide/api/v3/trae/oauth/ExchangeToken",
+	resp, err = http.Post(baseURL+"/cloudide/api/v3/trae/oauth/ExchangeToken",
 		"application/json",
 		bytes.NewBuffer(jsonData),
 	)
@@ -148,16 +168,30 @@ func RefreshIDEToken() error {
 	if err := json.NewDecoder(bytes.NewReader(respBody)).Decode(&tokenResp); err != nil {
 		return fmt.Errorf("decode token response failed: %v", err)
 	}
-	logger.Log.Info("请求远端成功,即将更新Token")
 
 	currentToken = tokenResp.Result.Token
 	tokenExpireAt = tokenResp.Result.TokenExpireAt
 	refreshExpireAt = tokenResp.Result.RefreshExpireAt
 
-	logger.Log.Info("Token 获取成功\n" +
+	// redis
+	if RefreshTokenCacheEnabled == "true" {
+		err := RedisSet(fmt.Sprintf("TOKEN:%s", AppConfig.AppID), currentToken, time.Duration(tokenExpireAt-now)*time.Millisecond)
+		if err != nil {
+			return fmt.Errorf("Redis set token error:  %v", err)
+		}
+		err = RedisSet(fmt.Sprintf("REFRESH_TOKEN:%s", AppConfig.AppID), refreshToken, time.Duration(refreshExpireAt-now)*time.Millisecond)
+		if err != nil {
+			return fmt.Errorf("Redis set refreshToken error:  %v", err)
+		}
+		logger.Log.Info("Token and Refresh Token successfully saved to Redis.")
+	}
+
+	logger.Log.Info("刷新Token与RefreshToken成功:\n" +
 		"----------------------------------------\n" +
 		"当前时间: " + time.Now().Format("2006-01-02 15:04:05") + "\n" +
+		"Token: " + currentToken + "\n" +
 		"Token 有效期至: " + time.UnixMilli(tokenExpireAt).Format("2006-01-02 15:04:05") + "\n" +
+		"RefreshToken: " + refreshToken + "\n" +
 		"RefreshToken 有效期至: " + time.UnixMilli(refreshExpireAt).Format("2006-01-02 15:04:05") + "\n" +
 		"----------------------------------------")
 

@@ -1,5 +1,5 @@
 # 构建阶段
-FROM --platform=$BUILDPLATFORM golang:1.21-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS builder
 
 # 设置工作目录
 WORKDIR /app
@@ -30,13 +30,6 @@ WORKDIR /app
 
 # 从构建阶段复制二进制文件
 COPY --from=builder /app/main .
-
-# 设置环境变量
-ENV APP_ID=""
-ENV IDE_TOKEN=""
-ENV BASE_URL="https://a0ai-api-sg.byteintlapi.com"
-ENV IDE_VERSION="1.0.2"
-ENV AUTH_TOKEN=""
 
 # 暴露端口
 EXPOSE 17080
