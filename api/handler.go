@@ -310,16 +310,16 @@ func setRequestHeaders(req *http.Request) {
 	req.Host = host
 
 	// 记录设备信息
-	logger.Log.WithFields(logrus.Fields{
-		"deviceCPU":   device.DeviceCPU,
-		"deviceID":    device.DeviceID,
-		"machineID":   device.MachineID,
-		"deviceBrand": device.DeviceBrand,
-		"deviceType":  device.DeviceType,
-		"osVersion":   device.OSVersion,
-		"systemType":  device.SystemType,
-		"token":       req.Header.Get("x-ide-token"),
-	}).Info("本次请求使用的设备信息")
+	//logger.Log.WithFields(logrus.Fields{
+	//	"deviceCPU":   device.DeviceCPU,
+	//	"deviceID":    device.DeviceID,
+	//	"machineID":   device.MachineID,
+	//	"deviceBrand": device.DeviceBrand,
+	//	"deviceType":  device.DeviceType,
+	//	"osVersion":   device.OSVersion,
+	//	"systemType":  device.SystemType,
+	//	"token":       req.Header.Get("x-ide-token"),
+	//}).Info("本次请求使用的设备信息")
 }
 
 // 检查模型是否支持
@@ -561,15 +561,15 @@ func CreateChatCompletion(c *gin.Context) {
 	}
 
 	// 在发送请求前记录完整的请求信息
-	logger.Log.WithFields(logrus.Fields{
-		"url":          url,
-		"requestBody":  string(jsonData),
-		"sessionID":    sessionID,
-		"model":        openAIReq.Model,
-		"messageCount": len(openAIReq.Messages),
-		"proto":        req.Proto,
-		"headers":      headers,
-	}).Info("发送聊天请求")
+	//logger.Log.WithFields(logrus.Fields{
+	//	"url":          url,
+	//	"requestBody":  string(jsonData),
+	//	"sessionID":    sessionID,
+	//	"model":        openAIReq.Model,
+	//	"messageCount": len(openAIReq.Messages),
+	//	"proto":        req.Proto,
+	//	"headers":      headers,
+	//}).Info("发送聊天请求")
 
 	logger.Log.WithFields(logrus.Fields{
 		"headers": headers,
@@ -600,11 +600,11 @@ func CreateChatCompletion(c *gin.Context) {
 			respHeaders[k] = v[0]
 		}
 	}
-	logger.Log.WithFields(logrus.Fields{
-		"statusCode":    resp.StatusCode,
-		"responseProto": resp.Proto,
-		"headers":       respHeaders,
-	}).Info("收到响应")
+	//logger.Log.WithFields(logrus.Fields{
+	//	"statusCode":    resp.StatusCode,
+	//	"responseProto": resp.Proto,
+	//	"headers":       respHeaders,
+	//}).Info("收到响应")
 
 	// 检查响应状态码并直接返回对应的错误
 	if resp.StatusCode != http.StatusOK {

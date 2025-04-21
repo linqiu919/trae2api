@@ -44,6 +44,8 @@ func main() {
 
 	// OpenAI 格式的 API 路由
 	r.GET("/v1/models", api.GetModels)
+	r.POST("/v1", api.CreateChatCompletion)
+	r.POST("/v1/chat", api.CreateChatCompletion)
 	r.POST("/v1/chat/completions", api.CreateChatCompletion)
 
 	logger.Log.WithFields(map[string]interface{}{
