@@ -56,7 +56,7 @@ func generateMachineID() string {
 
 // 生成随机设备品牌
 func generateDeviceBrand() string {
-	brands := []string{"82L3", "81C9", "814S", "8P15V", "75G4"}
+	brands := []string{"82L3", "81C9", "814S", "8P15V", "75G4", "65G4", "45G4"}
 	return brands[rand.Intn(len(brands))]
 }
 

@@ -42,9 +42,9 @@ func NewHTTP11Client() *http.Client {
 			MinVersion:         tls.VersionTLS12,
 			MaxVersion:         tls.VersionTLS13,
 		},
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		ResponseHeaderTimeout: 30 * time.Second,
+		MaxIdleConns:          300,
+		IdleConnTimeout:       240 * time.Second,
+		ResponseHeaderTimeout: 120 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 		DisableCompression:    false,
 	}
@@ -56,7 +56,7 @@ func NewHTTP11Client() *http.Client {
 
 	return &http.Client{
 		Transport: debugTransport,
-		Timeout:   30 * time.Second,
+		Timeout:   120 * time.Second,
 	}
 }
 

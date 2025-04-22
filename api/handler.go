@@ -812,28 +812,50 @@ func CreateChatCompletion(c *gin.Context) {
 						CreateChatCompletion(newContext)
 						return
 					}
-
-					// 发送完成标记
-					openAIResponse := map[string]interface{}{
-						"id":      fmt.Sprintf("chatcmpl-%d", time.Now().Unix()),
-						"object":  "chat.completion.chunk",
-						"created": time.Now().Unix(),
-						"model":   openAIReq.Model,
-						"choices": []map[string]interface{}{
-							{
-								"index":         0,
-								"delta":         map[string]interface{}{},
-								"finish_reason": lastFinishReason,
-							},
-						},
-					}
-					responseJSON, _ := json.Marshal(openAIResponse)
-					c.Writer.Write([]byte("data: " + string(responseJSON) + "\n\n"))
-					c.Writer.Write([]byte("data: [DONE]\n\n"))
-					c.Writer.Flush()
-					return
 				}
 			}
+		}
+
+		// 非流式响应需要返回标准的OpenAI格式响应
+		if fullResponse != "" {
+			// 确保lastFinishReason有默认值
+			if lastFinishReason == "" {
+				lastFinishReason = "stop"
+			}
+
+			// 构造与OpenAI兼容的响应格式
+			openAIResponse := map[string]interface{}{
+				"id":      fmt.Sprintf("chatcmpl-%d", time.Now().Unix()),
+				"object":  "chat.completion",
+				"created": time.Now().Unix(),
+				"model":   openAIReq.Model,
+				"choices": []map[string]interface{}{
+					{
+						"index": 0,
+						"message": map[string]interface{}{
+							"role":    "assistant",
+							"content": fullResponse,
+						},
+						"finish_reason": lastFinishReason,
+					},
+				},
+				"usage": map[string]interface{}{
+					"prompt_tokens":     0,
+					"completion_tokens": 0,
+					"total_tokens":      0,
+				},
+			}
+
+			c.JSON(http.StatusOK, openAIResponse)
+		} else {
+			// 如果没有收集到任何响应，返回错误
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": map[string]interface{}{
+					"message": "未收到远程服务的响应",
+					"type":    "api_error",
+					"code":    http.StatusInternalServerError,
+				},
+			})
 		}
 		return
 	}
