@@ -12,6 +12,8 @@ import (
 
 func main() {
 
+	const version = "V1.1.2"
+
 	// 设置全局时区为东八区（CST）
 	time.Local = time.FixedZone("CST", 8*3600)
 
@@ -51,7 +53,7 @@ func main() {
 	logger.Log.WithFields(map[string]interface{}{
 		"port": 17080,
 		"mode": gin.Mode(),
-	}).Info("API 服务启动成功")
+	}).Info("API 服务启动成功, 当前版本: " + version)
 
 	// 启动服务器
 	if err := r.Run(":17080"); err != nil {

@@ -303,7 +303,7 @@ func setRequestHeaders(req *http.Request) {
 	req.Header.Set("x-ide-token", config.GetCurrentToken())
 	req.Header.Set("accept", "*/*")
 	req.Header.Set("Connection", "keep-alive")
-	req.Header.Set("User-Agent", "Trae")
+	req.Header.Set("User-Agent", "")
 
 	// 提取并设置Host请求头
 	host := extractHostFromURL(config.AppConfig.BaseURL)
@@ -677,6 +677,28 @@ func CreateChatCompletion(c *gin.Context) {
 				data := strings.TrimPrefix(dataLine, "data: ")
 
 				switch event {
+				case "request_wait_in_queue":
+					// 处理排队事件
+					var queueData struct {
+						Position int    `json:"position"`
+						Message  string `json:"message"`
+						QueueID  string `json:"queue_id"`
+					}
+
+					if err := json.Unmarshal([]byte(data), &queueData); err != nil {
+						logger.Log.Errorf("解析排队数据失败: %v, data: %s", err, data)
+						continue
+					}
+
+					// 记录排队位置信息
+					//logger.Log.WithFields(logrus.Fields{
+					//	"position": queueData.Position,
+					//	"queueID":  queueData.QueueID,
+					//	"event":    "queue_position",
+					//}).Info("请求在队列中等待")
+
+					// 非流式模式下不返回排队信息，只记录日志，等待最终结果
+
 				case "output":
 					// 打印原始数据
 					//fmt.Printf("原始数据: %s\n", data)
@@ -869,7 +891,27 @@ func CreateChatCompletion(c *gin.Context) {
 	var lastFinishReason string
 	var fullResponse string
 
+	// 添加排队重试计数器
+	queueRetryCount := 0
+	maxQueueRetries := 3
+
+	// 添加上次发送排队消息的时间记录
+	lastQueueMsgTime := time.Time{}
+
 	for {
+		// 检查用户是否已取消请求
+		select {
+		case <-c.Request.Context().Done():
+			logger.Log.Info("用户已取消请求，停止处理")
+			// 关闭当前响应
+			if resp != nil && resp.Body != nil {
+				resp.Body.Close()
+			}
+			return
+		default:
+			// 继续处理
+		}
+
 		line, err := reader.ReadString('\n')
 		if err == io.EOF {
 			break
@@ -897,6 +939,125 @@ func CreateChatCompletion(c *gin.Context) {
 			data := strings.TrimPrefix(dataLine, "data: ")
 
 			switch event {
+			case "request_wait_in_queue":
+				// 处理排队事件
+				var queueData struct {
+					Position int    `json:"position"`
+					Message  string `json:"message"`
+					QueueID  string `json:"queue_id"`
+				}
+
+				if err := json.Unmarshal([]byte(data), &queueData); err != nil {
+					logger.Log.Errorf("解析排队数据失败: %v, data: %s", err, data)
+					continue
+				}
+
+				// 记录排队位置信息
+				//logger.Log.WithFields(logrus.Fields{
+				//	"position":   queueData.Position,
+				//	"queueID":    queueData.QueueID,
+				//	"event":      "queue_position",
+				//	"retryCount": queueRetryCount,
+				//	"maxRetries": maxQueueRetries,
+				//}).Info("请求在队列中等待")
+
+				// 检查是否已尝试重试三次
+				if queueRetryCount < maxQueueRetries {
+					// 在重试前检查用户是否已取消请求
+					select {
+					case <-c.Request.Context().Done():
+						logger.Log.Info("用户已取消请求，停止重试")
+						// 关闭当前响应
+						if resp != nil && resp.Body != nil {
+							resp.Body.Close()
+						}
+						return
+					default:
+						// 继续重试
+					}
+
+					// 未达到最大重试次数，尝试重新发送请求
+					queueRetryCount++
+					logger.Log.Infof("检测到排队状态，准备第 %d 次重试", queueRetryCount)
+
+					// 关闭当前响应
+					resp.Body.Close()
+
+					// 延迟3秒
+					time.Sleep(3 * time.Second)
+
+					// 准备重新发送请求
+					jsonData, err := json.Marshal(traeReq)
+					if err != nil {
+						errMsg := fmt.Sprintf("重试请求JSON编码失败: %v", err)
+						logger.Log.Error(errMsg)
+						c.SSEvent("error", gin.H{"error": errMsg})
+						return
+					}
+
+					// 创建新的HTTP请求
+					req, err := customhttp.NewHTTP11Request("POST", url, bytes.NewBuffer(jsonData))
+					if err != nil {
+						errMsg := fmt.Sprintf("创建重试请求失败: %v", err)
+						logger.Log.Error(errMsg)
+						c.SSEvent("error", gin.H{"error": errMsg})
+						return
+					}
+
+					// 设置请求头
+					setRequestHeaders(req)
+
+					// 使用HTTP/1.1客户端重新发送请求
+					client := customhttp.NewHTTP11Client()
+					newResp, err := client.Do(req)
+					if err != nil {
+						errMsg := fmt.Sprintf("重试请求发送失败: %v", err)
+						logger.Log.Error(errMsg)
+						c.SSEvent("error", gin.H{"error": errMsg})
+						return
+					}
+
+					// 替换当前响应和读取器
+					resp = newResp
+					reader = bufio.NewReader(resp.Body)
+
+					// 重新开始读取响应
+					continue
+				}
+
+				// 已达到最大重试次数，向用户显示排队信息，但限制频率
+				// 检查距离上次发送排队消息是否已经超过5秒
+				if time.Since(lastQueueMsgTime) < 5*time.Second {
+					// 未超过5秒，不发送新消息
+					continue
+				}
+
+				// 更新上次发送排队消息的时间
+				lastQueueMsgTime = time.Now()
+
+				// 流式模式下，直接发送队列位置响应，使用更简洁的格式并添加换行
+				queueMessage := fmt.Sprintf("排队中，每5s刷新一次状态，当前位置：%d\n", queueData.Position)
+
+				// 转换为 OpenAI 流式格式
+				openAIResponse := map[string]interface{}{
+					"id":      fmt.Sprintf("chatcmpl-%d", time.Now().Unix()),
+					"object":  "chat.completion.chunk",
+					"created": time.Now().Unix(),
+					"model":   openAIReq.Model,
+					"choices": []map[string]interface{}{
+						{
+							"index": 0,
+							"delta": map[string]interface{}{
+								"content": queueMessage,
+							},
+							"finish_reason": nil,
+						},
+					},
+				}
+				responseJSON, _ := json.Marshal(openAIResponse)
+				c.Writer.Write([]byte("data: " + string(responseJSON) + "\n\n"))
+				c.Writer.Flush()
+
 			case "output":
 				// 打印原始数据
 				//fmt.Printf("原始数据: %s\n", data)

@@ -23,7 +23,7 @@ type DeviceInfo struct {
 var (
 	currentDevice  *DeviceInfo
 	deviceMutex    sync.RWMutex
-	defaultMaxUses = 5 // 默认使用5次后更新
+	defaultMaxUses = 3 // 默认使用3次后更新
 )
 
 // 生成新的设备信息
@@ -56,7 +56,7 @@ func generateMachineID() string {
 
 // 生成随机设备品牌
 func generateDeviceBrand() string {
-	brands := []string{"82L3", "81C9", "814S", "8P15V", "75G4", "65G4", "45G4"}
+	brands := []string{"92L3", "91C9", "814S", "8P15V", "35G4", "65G4", "55G4"}
 	return brands[rand.Intn(len(brands))]
 }
 
