@@ -215,6 +215,8 @@ func convertModelName(model string) string {
 		return "deepseek-V3-0324"
 	case "gemini-2.5-pro-preview-03-25", "gemini-2.5-pro":
 		return "gemini-2.5-pro-preview-03-25"
+	case "gemini-2.5-flash":
+		return "gemini_2.5_flash"
 	default:
 		return model
 	}
@@ -335,7 +337,7 @@ func isModelSupported(model string) bool {
 		"deepseek-chat", "deepseek-coder", "deepseek-v3", "deepseek-V3", "deepseek-V3-0324",
 		"deepseek-reasoner", "deepseek-r1", "deepseek-R1", "deepseek-chat-0324",
 		// gemini 模型
-		"gemini-2.5-pro-preview-03-25", "gemini-2.5-pro",
+		"gemini-2.5-pro-preview-03-25", "gemini-2.5-pro", "gemini_2.5_flash",
 	}
 
 	for _, supportedModel := range supportedModels {
@@ -676,6 +678,13 @@ func CreateChatCompletion(c *gin.Context) {
 				}
 				data := strings.TrimPrefix(dataLine, "data: ")
 
+				// 记录事件和数据
+				//logger.Log.WithFields(logrus.Fields{
+				//	"event":      event,
+				//	"dataLength": len(data),
+				//	"data":       data,
+				//}).Debug("收到SSE事件")
+
 				switch event {
 				case "request_wait_in_queue":
 					// 处理排队事件
@@ -845,6 +854,14 @@ func CreateChatCompletion(c *gin.Context) {
 				lastFinishReason = "stop"
 			}
 
+			// 记录非流式响应的最终结果
+			//logger.Log.WithFields(logrus.Fields{
+			//	"responseLength": len(fullResponse),
+			//	"finishReason":   lastFinishReason,
+			//	"model":          openAIReq.Model,
+			//	"fullResponse":   fullResponse,
+			//}).Info("非流式响应处理完成")
+
 			// 构造与OpenAI兼容的响应格式
 			openAIResponse := map[string]interface{}{
 				"id":      fmt.Sprintf("chatcmpl-%d", time.Now().Unix()),
@@ -937,6 +954,13 @@ func CreateChatCompletion(c *gin.Context) {
 				continue
 			}
 			data := strings.TrimPrefix(dataLine, "data: ")
+
+			// 记录流式响应事件和数据
+			//logger.Log.WithFields(logrus.Fields{
+			//	"event":      event,
+			//	"dataLength": len(data),
+			//	"data":       data,
+			//}).Debug("流式响应收到SSE事件")
 
 			switch event {
 			case "request_wait_in_queue":
