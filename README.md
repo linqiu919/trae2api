@@ -1,8 +1,14 @@
 # Trae2API
 
-Trae：Trae是字节跳动开发的一个类似Cursor的编码辅助工具，目前处于免费试用期，提供了gpt-4o和claude3.5模型的免费使用。
+Trae：Trae是字节跳动开发的一个类似Cursor的编码辅助工具，目前提供了免费和付费两种使用模式，提供了gpt-4o和claude3.5等模型的免费使用。
 
 Trae2API：这是一个将 Trae API 转换为 OpenAI API 格式的封装服务。
+
+# 注意
+* 项目仅供技术交流学习，不可用于其他用途
+* 本项目已经停止更新，并不接受Issue
+* 项目不支持Trae- v1.3.0之后的新模型
+* 所有调用均受到Trae本身的限额和排队限制
 
 ## 功能特点
 
@@ -75,21 +81,8 @@ docker inspect trae2api
 
 ### 环境变量如何获取
 
-下载Trae客户端，登录账号，向AI发起一次对话
+参考文档链接获取。
 
-
-* Mac:
-执行以下脚本可以一键获取需要的环境变量值
-```bash
-curl -fsSL https://gist.githubusercontent.com/IM594/b0bbcdc3eb6a5e849f5e306246781a48/raw/get_trae_tokens.sh | bash
-```
-* Windows:
-  * 安装`everything`工具
-  * 搜索`storge.json`文件获取RefreshToken
-  * 搜索`main.log`文件获取ClientID、UserID
-  * 搜索`ai_1_stdout.log`文件获取AppID
-
-服务启动后，可以通过以下接口访问：
 
 ### 获取模型列表
 ```http
